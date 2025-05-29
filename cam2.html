@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lap Timer with Live Speed and Lap MPH</title>
+  <style>
+    body {
+      background-color: #000;
+      color: #0ff;
+      font-family: 'Orbitron', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      padding-top: 20px;
+      margin: 0;
+    }
+    button {
+      font-size: 1.2em;
+      padding: 0.6em 1.2em;
+      margin: 0.5em;
+      background-color: #222;
+      color: #0ff;
+      border: 2px solid #0ff;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    #displayContainer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 10px;
+    }
+    #timerDisplay, #liveLapTime, #lapDisplay, #currentSpeed, #lapMphDisplay {
+      font-size: 2em;
+      margin: 0.5em;
+      text-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+    }
+    #lapList {
+      margin-top: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+      width: 400px;
+      background-color: #111;
+      padding: 10px;
+      border-radius: 8px;
+    }
+    #lapList h3 {
+      margin-top: 0;
+      color: #0ff;
+    }
+    #lapList ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    #lapList li {
+      padding: 4px 0;
+    }
+    /* Style for the video element (rear camera) */
+    #rearCamera {
+      width: 640px;
+      height: 480px;
+      margin-top: 20px;
+      border: 2px solid #0ff;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Lap Timer with Live Speed & MPH Calculation</h2>
+
+<div>
+  <button id="startBtn">Start</button>
+  <button id="lapBtn" disabled>Lap</button>
+  <button id="stopBtn" disabled>Stop</button>
+  <button id="resetBtn">Reset</button>
+</div>
+
+<div id="displayContainer">
+  <div id="timerDisplay">Time: 0.00 s</div>
+  <div id="liveLapTime">Lap Timer: 0.00 s</div>
+  <div id="lapDisplay">Current Lap: 0.00 s</div>
+  <div id="currentSpeed">Current MPH: 0.00</div>
+  <div id="lapMphDisplay">Lap MPH: N/A</div>
+</div>
+
+<div id="lapList">
+  <h3>Lap Times:</h3>
+  <ul id="laps"></ul>
+</div>
+
+<div style="margin-top: 10px;">
+  <button id="calculateAllBtn" disabled>Calculate All Lap MPH</button>
+</div>
+
+<!-- Rear camera video element -->
+<h3>Rear Camera View</h3>
+<video id="rearCamera" autoplay playsinline muted></video>
+
+<script>
+  // Existing JavaScript code...
+
+  let startTime = 0;
+  let lastLapTime = 0;
+  let lapTimes = [];
+  let lapCount = 0;
+  let timerRunning = false;
+  let timerInterval;
+
+  const startBtn = document.getElementById('startBtn');
+  const lapBtn = document.getElementById('lapBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const calculateAllBtn = document.getElementById('calculateAllBtn');
+
+  const timerDisplay = document.getElementById('timerDisplay');
+  const lapDisplay = document.getElementById('lapDisplay');
+  const currentSpeedDiv = document.getElementById('currentSpeed');
+  const lapMphDisplay = document.getElementById('lapMphDisplay');
+  const liveLapTime = document.getElementById('liveLapTime');
+  const lapsUl = document.getElementById('laps');
+
+  // Start Button
+  startBtn.onclick = () => {
+    startTime = performance.now();
+    lastLapTime = startTime;
+    lapTimes = [];
+    lapCount = 0;
+    lapsUl.innerHTML = '';
+    lapDisplay.textContent = 'Current Lap: 0.00 s';
+    liveLapTime.textContent = 'Lap Timer: 0.00 s';
+    lapMphDisplay.textContent = 'Lap MPH: N/A';
+    currentSpeedDiv.textContent = 'Current MPH: 0.00';
+    calculateAllBtn.disabled = true;
+    timerInterval = setInterval(updateDisplay, 100);
+    timerRunning = true;
+    startBtn.disabled = true;
+    lapBtn.disabled = false;
+    stopBtn.disabled = false;
+  }
+
+  // Update display and live speed
+  function updateDisplay() {
+    if (timerRunning) {
+      const now = performance.now();
+      const totalElapsed = (now - startTime) / 1000;
+      const lapElapsed = (now - lastLapTime) / 1000;
+
+      timerDisplay.textContent = `Time: ${totalElapsed.toFixed(2)} s`;
+      liveLapTime.textContent = `Lap Timer: ${lapElapsed.toFixed(2)} s`;
+
+      if (lapElapsed > 0) {
+        const lapDistance = 0.1256;
+        const mph = (lapDistance * 3600) / lapElapsed;
+        currentSpeedDiv.textContent = `Current MPH: ${mph.toFixed(2)}`;
+      } else {
+        currentSpeedDiv.textContent = `Current MPH: 0.00`;
+      }
+    }
+  }
+
+  // Lap Button
+  lapBtn.onclick = () => {
+    if (timerRunning) {
+      const now = performance.now();
+      const lapTimeSeconds = (now - lastLapTime) / 1000;
+      lapCount++;
+      lapTimes.push(lapTimeSeconds);
+      lastLapTime = now;
+
+      const lapDistance = 0.1256;
+      const mph = (lapDistance * 3600) / lapTimeSeconds;
+
+      lapDisplay.textContent = `Current Lap: ${lapTimeSeconds.toFixed(2)} s`;
+
+      const li = document.createElement('li');
+      li.textContent = `Lap ${lapCount}: ${lapTimeSeconds.toFixed(2)} s (${mph.toFixed(2)} MPH)`;
+      lapsUl.appendChild(li);
+
+      calculateAllBtn.disabled = false;
+    }
+  }
+
+  // Stop Button
+  stopBtn.onclick = () => {
+    if (timerRunning) {
+      clearInterval(timerInterval);
+      timerRunning = false;
+      const now = performance.now();
+      const totalSeconds = (now - startTime) / 1000;
+      lapDisplay.textContent = `Total Time: ${totalSeconds.toFixed(2)} s`;
+    }
+  }
+
+  // Reset Button
+  resetBtn.onclick = () => {
+    clearInterval(timerInterval);
+    startTime = 0;
+    lastLapTime = 0;
+    lapTimes = [];
+    lapCount = 0;
+    timerRunning = false;
+    timerDisplay.textContent = "Time: 0.00 s";
+    lapDisplay.textContent = "Current Lap: 0.00 s";
+    liveLapTime.textContent = "Lap Timer: 0.00 s";
+    currentSpeedDiv.textContent = "Current MPH: 0.00";
+    lapMphDisplay.textContent = "Lap MPH: N/A";
+    lapsUl.innerHTML = '';
+    calculateAllBtn.disabled = true;
+    startBtn.disabled = false;
+    lapBtn.disabled = true;
+    stopBtn.disabled = true;
+  }
+
+  // Calculate All Lap MPH
+  calculateAllBtn.onclick = () => {
+    if (lapTimes.length === 0) {
+      alert('No laps recorded.');
+      return;
+    }
+    lapMphDisplay.innerHTML = '';
+    lapTimes.forEach((lapTime, index) => {
+      const mph = (0.1256 * 3600) / lapTime;
+      const p = document.createElement('p');
+      p.textContent = `Lap ${index + 1}: ${mph.toFixed(2)} MPH`;
+      lapMphDisplay.appendChild(p);
+    });
+  }
+
+  // Rear Camera Setup
+  const videoElement = document.getElementById('rearCamera');
+
+  // Access webcam
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      .then(stream => {
+        videoElement.srcObject = stream;
+      })
+      .catch(error => {
+        console.error('Error accessing camera:', error);
+        // Optionally, display a message to the user
+      });
+  } else {
+    alert('getUserMedia not supported on your browser!');
+  }
+</script>
+
+</body>
+</html>
