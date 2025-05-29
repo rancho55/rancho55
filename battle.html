@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Stephen RPG - Battle Encounter</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    max-width: 600px;
+    margin: auto;
+    padding: 20px;
+    background: #f9f9f9;
+  }
+  h1, h2 {
+    text-align: center;
+  }
+  .battle-section {
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 0 8px rgba(0,0,0,0.1);
+  }
+  .stats {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+  }
+  .stats div {
+    flex: 1;
+    margin: 0 10px;
+  }
+  button {
+    font-size: 1.2rem;
+    padding: 10px 20px;
+    margin: 10px auto;
+    display: block;
+    cursor: pointer;
+  }
+  #log {
+    margin-top: 20px;
+    height: 180px;
+    overflow-y: auto;
+    background: #222;
+    color: #eee;
+    padding: 10px;
+    border-radius: 6px;
+    font-family: monospace;
+    white-space: pre-wrap;
+  }
+</style>
+</head>
+<body>
+
+<h1>Battle Encounter</h1>
+
+<div class="battle-section" id="characterSection">
+  <h2>Your Character</h2>
+  <div><strong>Name:</strong> <span id="charName"></span></div>
+  <div><strong>Class:</strong> <span id="charClass"></span></div>
+  <div><strong>Level:</strong> <span id="charLevel"></span></div>
+  <div><strong>XP:</strong> <span id="charXP"></span></div>
+  <div><strong>HP:</strong> <span id="charHP"></span></div>
+  <div><strong>Strength Modifier:</strong> <span id="charStrMod"></span></div>
+</div>
+
+<div class="battle-section" id="npcSection">
+  <h2>Opponent</h2>
+  <div><strong>Name:</strong> <span id="npcName"></span></div>
+  <div><strong>Type:</strong> <span id="npcType"></span></div>
+  <div><strong>HP:</strong> <span id="npcHP"></span></div>
+  <div><strong>Attack Damage:</strong> <span id="npcDamage"></span></div>
+</div>
+
+<button id="attackBtn">Attack!</button>
+<button id="backBtn">Back to World Map</button>
+
+<div id="log"></div>
+
+<script>
+  // Load character and NPC data from localStorage
+  const characterData = JSON.parse(localStorage.getItem('characterData')) || {
+    name: "Unknown",
+    class: "Unknown",
+    abilities: {},
+    hp: 20,
+    xp: 0,
+    level: 1
+  };
+  const npcData = JSON.parse(localStorage.getItem('battleNpc'));
+
+  if (!npcData) {
+    alert("No battle opponent found! Returning to world map.");
+    window.location.href = 'worldmap.html';
+  }
+
+  // Elements
+  const charNameElem = document.getElementById('charName');
+  const charClassElem = document.getElementById('charClass');
+  const charLevelElem = document.getElementById('charLevel');
+  const charXPElem = document.getElementById('charXP');
+  const charHPElem = document.getElementById('charHP');
+  const charStrModElem = document.getElementById('charStrMod');
+
+  const npcNameElem = document.getElementById('npcName');
+  const npcTypeElem = document.getElementById('npcType');
+  const npcHPElem = document.getElementById('npcHP');
+  const npcDamageElem = document.getElementById('npcDamage');
+
+  const logElem = document.getElementById('log');
+  const attackBtn = document.getElementById('attackBtn');
+  const backBtn = document.getElementById('backBtn');
+
+  // Character stats setup
+  let charHP = characterData.hp || 20;
+  let charXP = characterData.xp || 0;
+  let charLevel = characterData.level || 1;
+
+  const charStrMod = characterData.abilities && characterData.abilities.Strength
+    ? Math.floor((characterData.abilities.Strength - 10) / 2)
+    : 0;
+
+  // NPC stats setup based on type or name
+  let npcHP = 10;
+  let npcDamageRoll = '1d4';
+
+  if (npcData.type === 'Animal') {
+    npcHP = 8;
+    npcDamageRoll = '1d4';
+  } else if (npcData.type === 'Person') {
+    npcHP = 12;
+    npcDamageRoll = '1d6';
+  } else if (npcData.type === 'Monster') {
+    npcHP = 20;
+    npcDamageRoll = '1d8';
+  }
+
+  // XP reward by NPC type
+  const xpReward = npcData.type === 'Monster' ? 100 : npcData.type === 'Person' ? 50 : 20;
+
+  // XP needed to level up (simple linear function)
+  function xpToLevel(level) {
+    return level * 100;
+  }
+
+  // Display initial info
+  charNameElem.textContent = characterData.name;
+  charClassElem.textContent = characterData.class;
+  charLevelElem.textContent = charLevel;
+  charXPElem.textContent = charXP;
+  charHPElem.textContent = charHP;
+  charStrModElem.textContent = (charStrMod >= 0 ? '+' : '') + charStrMod;
+
+  npcNameElem.textContent = npcData.name;
+  npcTypeElem.textContent = npcData.type;
+  npcHPElem.textContent = npcHP;
+  npcDamageElem.textContent = npcDamageRoll;
+
+  // Dice roll utility
+  function rollDice(diceStr) {
+    const [count, sides] = diceStr.split('d').map(Number);
+    let total = 0;
+    for(let i = 0; i < count; i++) {
+      total += Math.floor(Math.random() * sides) + 1;
+    }
+    return total;
+  }
+
+  // d20 roll for attack
+  function rollD20() {
+    return Math.floor(Math.random() * 20) + 1;
+  }
+
+  // Log message
+  function log(msg) {
+    logElem.textContent += msg + '\n';
+    logElem.scrollTop = logElem.scrollHeight;
+  }
+
+  // Battle turn logic
+  attackBtn.onclick = () => {
+    if (charHP <= 0 || npcHP <= 0) {
+      alert('Battle is over! Refresh page to start a new battle.');
+      return;
+    }
+
+    log('--- New Round ---');
+
+    // Player attack
+    const playerRoll = rollD20();
+    const playerAttackTotal = playerRoll + charStrMod;
+    log(`You roll to hit: d20(${playerRoll}) + STR mod(${charStrMod}) = ${playerAttackTotal}`);
+
+    const npcAC = 12;
+    if (playerAttackTotal >= npcAC) {
+      let damage = rollDice('1d8') + charStrMod;
+      damage = damage > 0 ? damage : 1;
+      npcHP -= damage;
+      npcHPElem.textContent = npcHP > 0 ? npcHP : 0;
+      log(`Hit! You deal ${damage} damage. Opponent HP: ${npcHP > 0 ? npcHP : 0}`);
+    } else {
+      log('You missed!');
+    }
+
+    if (npcHP <= 0) {
+      log('You defeated the opponent! Battle won!');
+
+      // Grant XP
+      charXP += xpReward;
+      log(`You gain ${xpReward} XP! Total XP: ${charXP}`);
+
+      // Save battle result for worldmap to show skull marker
+      if (npcData.latlng) {
+        const battleResult = {
+          latlng: npcData.latlng,
+          xpGained: xpReward
+        };
+        localStorage.setItem('battleResult', JSON.stringify(battleResult));
+      }
+
+      // Level up check
+      while (charXP >= xpToLevel(charLevel)) {
+        charXP -= xpToLevel(charLevel);
+        charLevel++;
+        log(`You leveled up! You are now level ${charLevel}.`);
+
+        // Example stat increase on level up
+        characterData.hp = (characterData.hp || 20) + 5; 
+        charHP = characterData.hp;
+
+        // Increase Strength ability by 1 as example
+        if (!characterData.abilities) characterData.abilities = {};
+        characterData.abilities.Strength = (characterData.abilities.Strength || 10) + 1;
+
+        log(`HP increased to ${characterData.hp}. Strength increased to ${characterData.abilities.Strength}.`);
+      }
+
+      characterData.xp = charXP;
+      characterData.level = charLevel;
+      characterData.hp = charHP;
+
+      // Save updated character data
+      localStorage.setItem('characterData', JSON.stringify(characterData));
+
+      attackBtn.disabled = true;
+      return;
+    }
+
+    // NPC attack turn
+    const npcAttackRoll = rollD20();
+    const npcAttackTotal = npcAttackRoll + 2; // NPC attack bonus +2
+    log(`Opponent rolls to hit: d20(${npcAttackRoll}) + 2 = ${npcAttackTotal}`);
+
+    const playerAC = 12;
+    if (npcAttackTotal >= playerAC) {
+      const npcDamage = rollDice(npcDamageRoll);
+      charHP -= npcDamage;
+      charHPElem.textContent = charHP > 0 ? charHP : 0;
+      log(`Opponent hits and deals ${npcDamage} damage! Your HP: ${charHP > 0 ? charHP : 0}`);
+
+      if (charHP <= 0) {
+        log('You have been defeated! Game over...');
+        attackBtn.disabled = true;
+        // Update character HP to 0 in localStorage
+        characterData.hp = 0;
+        localStorage.setItem('characterData', JSON.stringify(characterData));
+        return;
+      }
+    } else {
+      log('Opponent missed!');
+    }
+  };
+
+  // Back to map button
+  backBtn.onclick = () => {
+    window.location.href = 'worldmap.html';
+  };
+</script>
+
+</body>
+</html>

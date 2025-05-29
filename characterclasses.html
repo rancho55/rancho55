@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Choose Class - Stephen RPG</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+  h1, h2 { margin-bottom: 10px; }
+  .ability-row { display: flex; justify-content: space-between; max-width: 300px; margin: 5px 0; }
+  .ability-row > div { width: 100px; }
+  .modifier { font-weight: bold; }
+  #raceDisplay, #classDisplay { margin: 15px 0; font-size: 1.2rem; }
+  .stat-display {
+    margin-top: 20px;
+    font-size: 1.1rem;
+  }
+  #classSelection {
+    margin-top: 30px;
+  }
+  #classSelection button {
+    padding: 10px 15px;
+    margin: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    border: 2px solid #333;
+    background-color: #f0f0f0;
+    border-radius: 5px;
+    transition: background-color 0.3s, border-color 0.3s;
+  }
+  #classSelection button.selected {
+    background-color: #007BFF;
+    color: white;
+    border-color: #007BFF;
+  }
+  #selectedClass {
+    margin-top: 20px;
+    font-weight: bold;
+  }
+  #nextStepBtn {
+    margin-top: 30px;
+    padding: 12px 24px;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    background-color: #28a745;
+    border: none;
+    border-radius: 6px;
+    color: white;
+  }
+  #nextStepBtn:disabled {
+    background-color: #aaa;
+    cursor: not-allowed;
+  }
+  #navLinks {
+    margin-top: 30px;
+  }
+  #navLinks a {
+    margin-right: 20px;
+    text-decoration: none;
+    font-weight: bold;
+    color: #007BFF;
+  }
+  #navLinks a:hover {
+    text-decoration: underline;
+  }
+</style>
+</head>
+<body>
+
+<h1>Choose Your Class</h1>
+
+<div id="charNameDisplay"></div>
+
+<h2>Ability Scores</h2>
+<div class="ability-row"><div>Strength</div><div id="strScore">--</div><div class="modifier" id="strMod"></div></div>
+<div class="ability-row"><div>Dexterity</div><div id="dexScore">--</div><div class="modifier" id="dexMod"></div></div>
+<div class="ability-row"><div>Constitution</div><div id="conScore">--</div><div class="modifier" id="conMod"></div></div>
+<div class="ability-row"><div>Intelligence</div><div id="intScore">--</div><div class="modifier" id="intMod"></div></div>
+<div class="ability-row"><div>Wisdom</div><div id="wisScore">--</div><div class="modifier" id="wisMod"></div></div>
+<div class="ability-row"><div>Charisma</div><div id="chaScore">--</div><div class="modifier" id="chaMod"></div></div>
+
+<div class="stat-display">
+  <p><strong>HP:</strong> <span id="charHP">--</span></p>
+  <p><strong>XP:</strong> <span id="charXP">--</span></p>
+  <p><strong>Level:</strong> <span id="charLevel">--</span></p>
+</div>
+
+<div id="raceDisplay"></div>
+
+<div id="classSelection">
+  <h2>Select Your Class</h2>
+  <button data-class="Fighter">Fighter</button>
+  <button data-class="Rogue">Thief (Rogue)</button>
+  <button data-class="Wizard">Wizard</button>
+  <button data-class="Cleric">Cleric</button>
+  <button data-class="Ranger">Ranger</button>
+  <button data-class="Paladin">Paladin</button>
+  <button data-class="Barbarian">Barbarian</button>
+  <button data-class="Bard">Bard</button>
+  <button data-class="Druid">Druid</button>
+  <button data-class="Monk">Monk</button>
+  <button data-class="Sorcerer">Sorcerer</button>
+  <button data-class="Warlock">Warlock</button>
+</div>
+
+<div id="selectedClass">Selected Class: <em>None</em></div>
+
+<button id="nextStepBtn" disabled>Next Step</button>
+
+<div id="navLinks">
+  <a href="characterprofile.html">Back to Profile</a>
+  <a href="worldmap.html">Go to World Map</a>
+</div>
+
+<script>
+  function getModifier(score) {
+    return Math.floor((score - 10) / 2);
+  }
+
+  // Load character data
+  let characterData = JSON.parse(localStorage.getItem('characterData'));
+
+  if (!characterData) {
+    alert('No character data found. Please create a character first.');
+    window.location.href = 'main.html';
+  } else {
+    document.getElementById('charNameDisplay').textContent = `Name: ${characterData.name}`;
+
+    const abilities = characterData.abilities;
+
+    document.getElementById('strScore').textContent = abilities.Strength;
+    document.getElementById('dexScore').textContent = abilities.Dexterity;
+    document.getElementById('conScore').textContent = abilities.Constitution;
+    document.getElementById('intScore').textContent = abilities.Intelligence;
+    document.getElementById('wisScore').textContent = abilities.Wisdom;
+    document.getElementById('chaScore').textContent = abilities.Charisma;
+
+    for (const ab of Object.keys(abilities)) {
+      const mod = getModifier(abilities[ab]);
+      const modText = (mod >= 0 ? '+' : '') + mod;
+      document.getElementById(ab.slice(0,3).toLowerCase() + 'Mod').textContent = modText;
+    }
+
+    // Set default values if not already present
+    characterData.hp = characterData.hp || 10 + getModifier(abilities.Constitution);
+    characterData.xp = characterData.xp || 0;
+    characterData.level = characterData.level || 1;
+
+    document.getElementById('charHP').textContent = characterData.hp;
+    document.getElementById('charXP').textContent = characterData.xp;
+    document.getElementById('charLevel').textContent = characterData.level;
+
+    if (characterData.race) {
+      document.getElementById('raceDisplay').innerHTML = `<strong>Race:</strong> ${characterData.race}`;
+    }
+  }
+
+  // Class selection
+  const classButtons = document.querySelectorAll('#classSelection button');
+  const selectedClassDisplay = document.getElementById('selectedClass');
+  const nextStepBtn = document.getElementById('nextStepBtn');
+
+  if (characterData.class) {
+    classButtons.forEach(btn => {
+      if (btn.getAttribute('data-class') === characterData.class) {
+        btn.classList.add('selected');
+        selectedClassDisplay.innerHTML = `Selected Class: <strong>${characterData.class}</strong>`;
+        nextStepBtn.disabled = false;
+      }
+    });
+  }
+
+  classButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      classButtons.forEach(btn => btn.classList.remove('selected'));
+      button.classList.add('selected');
+      const cls = button.getAttribute('data-class');
+      selectedClassDisplay.innerHTML = `Selected Class: <strong>${cls}</strong>`;
+      nextStepBtn.disabled = false;
+      characterData.class = cls;
+      localStorage.setItem('characterData', JSON.stringify(characterData));
+    });
+  });
+
+  nextStepBtn.onclick = () => {
+    alert(`Class "${characterData.class}" selected! Proceeding to next step...`);
+    // Add redirect or logic here
+  };
+</script>
+
+</body>
+</html>

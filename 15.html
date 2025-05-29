@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Alien Tech GPX Tracker</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    /* Alien Technology Theme */
+    body {
+      margin:0; font-family:'Orbitron', 'Consolas', monospace; background:linear-gradient(135deg, #0f2027 0%, #2c5364 100%);
+      color:#bafff5;
+      letter-spacing:1.2px;
+    }
+    h3 { margin:0 0 8px 0; color:#00ffe7; text-shadow:0 0 8px #00ffe7, 0 0 2px #fff;}
+    #map {
+      height:40vh; min-height:220px; width:100vw;
+      box-shadow:0 0 20px 2px #00ffe7, 0 0 40px 10px #0ff4, 0 0 0 4px #0ff2 inset;
+      border-radius:16px;
+      margin-bottom:10px;
+    }
+    .panel {
+      padding:18px 24px 10px 24px;
+      background:rgba(0,30,40,0.85);
+      border-radius:0 0 18px 18px;
+      box-shadow:0 0 30px #00ffe7 inset;
+      margin-bottom:10px;
+    }
+    .alien-btn, .export-btn, .waypoint-btn, .compass-btn, select {
+      background:linear-gradient(90deg,#0ff,#00ffe7 70%,#0ff);
+      color:#101a1c; border:none; border-radius:8px; padding:8px 18px;
+      font-size:15px; font-weight:700; cursor:pointer; margin:8px 6px 8px 0;
+      box-shadow:0 0 8px #00ffe7,0 0 2px #fff inset;
+      text-shadow:0 0 2px #fff;
+      transition:background 0.2s, box-shadow 0.2s;
+    }
+    .alien-btn:disabled {background:#222;color:#888;}
+    .alien-btn:hover:not(:disabled), .export-btn:hover, .waypoint-btn:hover, .compass-btn:hover {
+      background:linear-gradient(90deg,#00ffe7,#0ff 70%,#00ffe7);
+      box-shadow:0 0 16px #00ffe7,0 0 8px #fff inset;
+    }
+    .export-btn {background:linear-gradient(90deg,#00e0ff,#00ffe7);}
+    .waypoint-btn {background:linear-gradient(90deg,#ffeb3b,#00ffe7);}
+    select {
+      background:#101a1c; color:#00ffe7; border:1px solid #00ffe7;
+      font-family:inherit; margin-left:8px;
+    }
+    #distance, #accuracy, #coords, #gyroData, #baroData, #weatherInfo {
+      font-size:16px; margin-top:4px; color:#bafff5; text-shadow:0 0 2px #0ff;
+    }
+    .weather-panel {
+      background:rgba(10,40,60,0.7); padding:10px 20px; margin:10px 0;
+      border-radius:12px; box-shadow:0 0 10px #00ffe7;
+      border:1.5px solid #00ffe7;
+    }
+    .accel-panel, .elev-panel {
+      width: 100vw; background:rgba(0,20,40,0.7); box-shadow:0 0 16px #00ffe7 inset;
+      border-radius: 0 0 18px 18px; margin-top: 0; padding-bottom: 14px;
+      margin-bottom:10px;
+    }
+    .accel-header, .elev-header {
+      font-size: 20px; font-weight: 700; color:#00ffe7; padding: 18px 24px 8px 24px;
+      text-shadow:0 0 6px #00ffe7;
+    }
+    .accel-info, .elev-info {
+      display: flex; flex-wrap: wrap; gap: 24px; padding: 0 24px 10px 24px;
+      font-size: 16px; color: #bafff5;
+    }
+    #accelCanvas, #elevCanvas {
+      display: block; margin: 0 auto; background:rgba(0,255,255,0.05);
+      border: 2px solid #00ffe7; border-radius: 10px; margin-top: 10px;
+      box-shadow:0 0 16px #00ffe7 inset;
+    }
+    .compass-panel {
+      display:flex;flex-direction:column;align-items:center;justify-content:center;margin:20px 0;
+    }
+    #compassCanvas {
+      background:rgba(0,255,255,0.04); border:2px solid #00ffe7; border-radius:50%;margin:10px;
+      box-shadow:0 0 16px #00ffe7 inset;
+    }
+    .compass-btn {margin-top:0;}
+    #alien-tip {
+      color:#ffeb3b;font-size:15px;margin-top:8px;text-shadow:0 0 2px #ffeb3b;
+    }
+    @media (max-width: 600px) {
+      .panel {padding:10px 4px;}
+      .accel-header, .accel-info, .elev-header, .elev-info {padding: 10px; font-size: 15px;}
+      #accelCanvas, #elevCanvas {width: 95vw !important;}
+    }
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap');
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <button class="alien-btn" id="requestMotionBtn">Allow Motion Access</button>
+    <button class="alien-btn" id="startBtn" disabled>Start Tracking</button>
+    <button class="alien-btn" id="stopBtn" disabled>Stop Tracking</button>
+    <button class="alien-btn" id="resetBtn">Reset</button>
+    <button class="export-btn" id="exportBtn">Export GPX</button>
+    <button class="waypoint-btn" id="addWptBtn">Add Waypoint</button>
+    <select id="mapStyle">
+      <option value="osm">Street</option>
+      <option value="otm">Topo</option>
+      <option value="satellite">Satellite</option>
+    </select>
+    <span id="distance">GPS Distance: 0.00 ft</span>
+    <span id="accuracy">Accuracy: --</span>
+    <div id="coords">Coordinates: N/A</div>
+    <div>Gyro: <span id="gyroData">x:0, y:0, z:0</span></div>
+    <div>Barometer: <span id="baroData">--</span></div>
+    <div id="alien-tip">👽 Tip: Enable GPS & Wi-Fi, go outside, and wait for accuracy to improve for best results.</div>
+  </div>
+  <div id="map"></div>
+  <div class="weather-panel">
+    <h3>Local Weather</h3>
+    <div id="weatherInfo">Loading...</div>
+  </div>
+  <div class="accel-panel">
+    <div class="accel-header">Accelerometer Trail & Data (Visualization Only)</div>
+    <canvas id="accelCanvas" width="350" height="200"></canvas>
+    <div class="accel-info">
+      <span id="accelDistance">Accelerometer Distance: 0.00 feet (visual only)</span>
+      <span id="accelData">x: 0, y: 0, z: 0</span>
+    </div>
+  </div>
+  <div class="elev-panel">
+    <div class="elev-header">Elevation Profile</div>
+    <canvas id="elevCanvas" width="350" height="100"></canvas>
+    <div class="elev-info">
+      <span id="elevMin">Min: --</span>
+      <span id="elevMax">Max: --</span>
+      <span id="elevGain">Gain: --</span>
+    </div>
+  </div>
+  <div class="compass-panel">
+    <canvas id="compassCanvas" width="120" height="120"></canvas>
+    <div id="compassLabel">Heading: 0° (Magnetic North)</div>
+    <button class="compass-btn alien-btn" id="toggleNorthBtn">Switch to True North</button>
+  </div>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    // --- MAP LAYERS ---
+    const mapLayers = {
+      osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors' }),
+      otm: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { attribution: '© OpenTopoMap contributors' }),
+      satellite: L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        attribution: '© Google Satellite'
+      })
+    };
+    let map, trailLine, totalDistance = 0, lastLatLng = null, watchId = null, marker = null, trailCoordinates = [], elevProfile = [], waypoints = [];
+    const MIN_DISTANCE = 3, MAX_DISTANCE = 30, GPS_AVG_WINDOW = 3, GPS_SMOOTH_ALPHA = 0.6, ACCURACY_THRESHOLD = 20;
+    let isDeviceMoving = false, accelerationThreshold = 0.18, accelWindow = [], ACCEL_WINDOW_SIZE = 8, allowGPS = false;
+
+    // --- Gyroscope/Accelerometer ---
+    let lastGyro = {x:0, y:0, z:0}, lastAccel = {x:0, y:0, z:0};
+
+    // --- Accelerometer Trail Visualization ---
+    const canvas = document.getElementById('accelCanvas');
+    const ctx = canvas.getContext('2d');
+    const CANVAS_CENTER = { x: canvas.width / 2, y: canvas.height / 2 };
+    let accelTrail = [ {...CANVAS_CENTER} ], accelDistance = 0, prevAccelPoint = {...CANVAS_CENTER}, lastAccelForTrail = {x: 0, y: 0, z: 0};
+    const ACCEL_MOVEMENT_THRESHOLD = 0.14;
+
+    function drawAccelTrail() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.beginPath(); ctx.moveTo(accelTrail[0].x, accelTrail[0].y);
+      for (let i = 1; i < accelTrail.length; i++) ctx.lineTo(accelTrail[i].x, accelTrail[i].y);
+      ctx.strokeStyle = '#00ffe7'; ctx.lineWidth = 3; ctx.shadowColor = "#00ffe7"; ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowBlur = 0;
+    }
+    function updateAccelDistanceDisplay() {
+      document.getElementById('accelDistance').innerText =
+        'Accelerometer Distance: ' + accelDistance.toFixed(2) + ' feet (visual only)';
+    }
+    function updateAccelDataDisplay() {
+      document.getElementById('accelData').innerText =
+        `x: ${lastAccelForTrail.x.toFixed(2)}, y: ${lastAccelForTrail.y.toFixed(2)}, z: ${lastAccelForTrail.z.toFixed(2)}`;
+    }
+
+    // --- Compass ---
+    let compassHeading = 0, useTrueNorth = false, magDeclination = 0;
+    const compassCanvas = document.getElementById('compassCanvas');
+    const compassCtx = compassCanvas.getContext('2d');
+    function handleOrientation(event) {
+      let heading;
+      if (useTrueNorth && event.webkitCompassHeading !== undefined) heading = event.webkitCompassHeading;
+      else if (event.absolute && event.alpha !== null) heading = 360 - event.alpha;
+      else if (event.alpha !== null) heading = 360 - event.alpha;
+      else heading = 0;
+      if (useTrueNorth && event.webkitCompassHeading === undefined) heading += magDeclination;
+      compassHeading = (heading + 360) % 360;
+      drawCompass();
+    }
+    function drawCompass() {
+      compassCtx.clearRect(0,0,120,120);
+      compassCtx.beginPath(); compassCtx.arc(60,60,50,0,2*Math.PI);
+      compassCtx.strokeStyle="#00ffe7"; compassCtx.lineWidth=4; compassCtx.shadowColor="#00ffe7"; compassCtx.shadowBlur=10; compassCtx.stroke(); compassCtx.shadowBlur=0;
+      compassCtx.save(); compassCtx.translate(60,60);
+      compassCtx.rotate((compassHeading-0)*Math.PI/180);
+      compassCtx.beginPath(); compassCtx.moveTo(0,0); compassCtx.lineTo(0,-40);
+      compassCtx.strokeStyle="#ffeb3b"; compassCtx.lineWidth=5; compassCtx.stroke();
+      compassCtx.beginPath(); compassCtx.moveTo(0,0); compassCtx.lineTo(0,30);
+      compassCtx.strokeStyle="#00ffe7"; compassCtx.lineWidth=3; compassCtx.stroke();
+      compassCtx.restore();
+      compassCtx.font="18px Orbitron, Arial"; compassCtx.fillStyle="#00ffe7";
+      compassCtx.textAlign="center"; compassCtx.fillText("N",60,25);
+      document.getElementById('compassLabel').textContent =
+        `Heading: ${compassHeading.toFixed(0)}° (${useTrueNorth ? "True North":"Magnetic North"})`;
+    }
+    document.getElementById('toggleNorthBtn').onclick = function() {
+      useTrueNorth = !useTrueNorth;
+      this.textContent = useTrueNorth ? "Switch to Magnetic North" : "Switch to True North";
+      drawCompass();
+    };
+
+    // --- Barometer ---
+    let baroAvailable = false, baroAlt = null, baroAlt0 = null;
+    function setupBarometer() {
+      if ('Barometer' in window) {
+        try {
+          let baro = new Barometer();
+          baro.addEventListener('reading', () => {
+            let alt = 44330 * (1 - Math.pow(baro.pressure/1013.25, 1/5.255));
+            if (!baroAlt0) baroAlt0 = alt;
+            baroAlt = alt - baroAlt0;
+            document.getElementById('baroData').textContent = `Alt: ${baroAlt.toFixed(1)} m (${baro.pressure.toFixed(1)} hPa)`;
+            if (watchId) { elevProfile.push(baroAlt); drawElevationProfile(); }
+          });
+          baro.start();
+          baroAvailable = true;
+        } catch (e) { document.getElementById('baroData').textContent = 'Not supported'; }
+      } else {
+        document.getElementById('baroData').textContent = 'Not supported';
+      }
+    }
+
+    // --- Elevation Profile ---
+    const elevCanvas = document.getElementById('elevCanvas');
+    const elevCtx = elevCanvas.getContext('2d');
+    function drawElevationProfile() {
+      elevCtx.clearRect(0,0,elevCanvas.width,elevCanvas.height);
+      if (!elevProfile.length) return;
+      let min = Math.min(...elevProfile), max = Math.max(...elevProfile), gain = 0;
+      for (let i=1;i<elevProfile.length;i++) if (elevProfile[i]>elevProfile[i-1]) gain += elevProfile[i]-elevProfile[i-1];
+      document.getElementById('elevMin').textContent = 'Min: '+min.toFixed(1)+' m';
+      document.getElementById('elevMax').textContent = 'Max: '+max.toFixed(1)+' m';
+      document.getElementById('elevGain').textContent = 'Gain: '+gain.toFixed(1)+' m';
+      elevCtx.beginPath();
+      for(let i=0;i<elevProfile.length;i++) {
+        let x = i/(elevProfile.length-1)*(elevCanvas.width-20)+10;
+        let y = elevCanvas.height-10-((elevProfile[i]-min)/(max-min+0.01))*(elevCanvas.height-20);
+        if (i===0) elevCtx.moveTo(x,y); else elevCtx.lineTo(x,y);
+      }
+      elevCtx.strokeStyle="#00ffe7"; elevCtx.lineWidth=3; elevCtx.shadowColor="#00ffe7"; elevCtx.shadowBlur=6; elevCtx.stroke(); elevCtx.shadowBlur=0;
+    }
+
+    // --- Motion Permission ---
+    document.getElementById('requestMotionBtn').onclick = function() {
+      if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+        DeviceMotionEvent.requestPermission().then(response => {
+          if (response === 'granted') {
+            window.addEventListener('devicemotion', handleMotion);
+            window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+            window.addEventListener('deviceorientation', handleOrientation, true);
+            document.getElementById('startBtn').disabled = false;
+          }
+        });
+      } else {
+        window.addEventListener('devicemotion', handleMotion);
+        window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+        window.addEventListener('deviceorientation', handleOrientation, true);
+        document.getElementById('startBtn').disabled = false;
+      }
+    };
+
+    function handleMotion(event) {
+      // Accelerometer
+      const acc = event.acceleration && event.acceleration.x !== null ? event.acceleration : event.accelerationIncludingGravity;
+      if (acc) {
+        lastAccel = {x: acc.x || 0, y: acc.y || 0, z: acc.z || 0};
+        document.getElementById('accelData').textContent = `x:${lastAccel.x.toFixed(2)}, y:${lastAccel.y.toFixed(2)}, z:${lastAccel.z.toFixed(2)}`;
+        let totalAcc = Math.sqrt(lastAccel.x*lastAccel.x + lastAccel.y*lastAccel.y + lastAccel.z*lastAccel.z);
+        accelWindow.push(totalAcc);
+        if (accelWindow.length > ACCEL_WINDOW_SIZE) accelWindow.shift();
+        let meanAcc = accelWindow.reduce((a,b)=>a+b,0)/accelWindow.length;
+        isDeviceMoving = meanAcc > accelerationThreshold;
+        allowGPS = isDeviceMoving;
+        lastAccelForTrail = lastAccel;
+        updateAccelDataDisplay();
+        if (totalAcc > ACCEL_MOVEMENT_THRESHOLD) {
+          const SCALE = 8;
+          let newPoint = {
+            x: prevAccelPoint.x + lastAccel.x * SCALE,
+            y: prevAccelPoint.y - lastAccel.y * SCALE
+          };
+          newPoint.x = Math.max(0, Math.min(canvas.width, newPoint.x));
+          newPoint.y = Math.max(0, Math.min(canvas.height, newPoint.y));
+          accelTrail.push(newPoint);
+          let dx = newPoint.x - prevAccelPoint.x;
+          let dy = newPoint.y - prevAccelPoint.y;
+          let segmentDist = Math.sqrt(dx*dx + dy*dy) * 0.2;
+          accelDistance += segmentDist;
+          prevAccelPoint = newPoint;
+          if (accelTrail.length > 200) accelTrail.shift();
+          drawAccelTrail();
+          updateAccelDistanceDisplay();
+        }
+      }
+      // Gyroscope
+      if (event.rotationRate) {
+        lastGyro = {x: event.rotationRate.alpha || 0, y: event.rotationRate.beta || 0, z: event.rotationRate.gamma || 0};
+        document.getElementById('gyroData').textContent = `x:${lastGyro.x.toFixed(2)}, y:${lastGyro.y.toFixed(2)}, z:${lastGyro.z.toFixed(2)}`;
+      }
+    }
+
+    // --- GPS Smoothing and Filtering ---
+    let gpsBuffer = [];
+    function smoothGPS(lat, lng) {
+      gpsBuffer.push([lat, lng]);
+      if (gpsBuffer.length > GPS_AVG_WINDOW) gpsBuffer.shift();
+      let sumLat = 0, sumLng = 0, weight = 1, totalWeight = 0;
+      for (let i = gpsBuffer.length-1; i >= 0; i--) {
+        sumLat += gpsBuffer[i][0] * weight;
+        sumLng += gpsBuffer[i][1] * weight;
+        totalWeight += weight;
+        weight *= GPS_SMOOTH_ALPHA;
+      }
+      return [sumLat/totalWeight, sumLng/totalWeight];
+    }
+
+    // --- WEATHER ---
+    const weatherInfo = document.getElementById('weatherInfo');
+    const weatherApiKey = "YOUR_OPENWEATHERMAP_API_KEY"; // <-- INSERT YOUR API KEY HERE
+    function fetchWeatherByCoords(lat, lon) {
+      const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric`;
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          if (data.cod !== 200) {
+            weatherInfo.innerHTML = "Weather unavailable.";
+            return;
+          }
+          const temp = data.main.temp;
+          const desc = data.weather[0].description;
+          const icon = data.weather[0].icon;
+          const humidity = data.main.humidity;
+          weatherInfo.innerHTML = `
+            <img src="https://openweathermap.org/img/wn/${icon}.png" alt="icon" style="vertical-align:middle;">
+            <b>${temp}°C</b>, ${desc}<br>
+            Humidity: ${humidity}%`;
+        })
+        .catch(() => { weatherInfo.innerHTML = "Weather unavailable."; });
+    }
+
+    // --- GPS Tracking ---
+    document.getElementById('startBtn').onclick = function() {
+      if (navigator.geolocation) {
+        document.getElementById('startBtn').disabled = true;
+        document.getElementById('stopBtn').disabled = false;
+        totalDistance = 0;
+        document.getElementById('distance').textContent = 'GPS Distance: 0.00 ft';
+        lastLatLng = null;
+        trailCoordinates = [];
+        elevProfile = [];
+        waypoints = [];
+        gpsBuffer = [];
+        if (trailLine) { map.removeLayer(trailLine); trailLine = null; }
+        if (marker) { map.removeLayer(marker); marker = null; }
+        map.eachLayer(function(layer){ if(layer instanceof L.Marker && !layer._icon) map.removeLayer(layer); });
+        watchId = navigator.geolocation.watchPosition(updateLocation, handleError, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        });
+      }
+    };
+    document.getElementById('stopBtn').onclick = function() {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+        document.getElementById('startBtn').disabled = false;
+        document.getElementById('stopBtn').disabled = true;
+        alert('Tracking stopped.');
+      }
+    };
+    document.getElementById('resetBtn').onclick = function() {
+      if (trailLine) { map.removeLayer(trailLine); trailLine = null; }
+      if (marker) { map.removeLayer(marker); marker = null; }
+      totalDistance = 0;
+      lastLatLng = null;
+      trailCoordinates = [];
+      elevProfile = [];
+      waypoints = [];
+      gpsBuffer = [];
+      document.getElementById('distance').textContent = 'GPS Distance: 0.00 ft';
+      document.getElementById('coords').textContent = 'Coordinates: N/A';
+      document.getElementById('accuracy').textContent = 'Accuracy: --';
+      accelTrail = [ {...CANVAS_CENTER} ];
+      accelDistance = 0;
+      prevAccelPoint = {...CANVAS_CENTER};
+      drawAccelTrail();
+      updateAccelDistanceDisplay();
+      drawElevationProfile();
+      map.eachLayer(function(layer){ if(layer instanceof L.Marker && !layer._icon) map.removeLayer(layer); });
+      weatherInfo.innerHTML = "Loading...";
+    };
+
+    function updateLocation(position) {
+      document.getElementById('accuracy').textContent = 'Accuracy: ' +
+        (position.coords.accuracy ? position.coords.accuracy.toFixed(1) + ' m' : '--');
+      if (position.coords.accuracy > ACCURACY_THRESHOLD) return;
+      if (!allowGPS) return;
+      let lat = position.coords.latitude, lng = position.coords.longitude, elev = null;
+      if (position.coords.altitude !== null) elev = position.coords.altitude;
+      [lat, lng] = smoothGPS(lat, lng);
+      const latLng = [lat, lng];
+      document.getElementById('coords').textContent = `Coordinates: Latitude: ${lat.toFixed(6)}, Longitude: ${lng.toFixed(6)}`;
+      fetchWeatherByCoords(lat, lng); // Update weather on each fix
+      if (lastLatLng) {
+        const distance = getDistanceFromLatLng(lastLatLng, latLng);
+        if (distance < MIN_DISTANCE || distance > MAX_DISTANCE) return;
+        totalDistance += distance * 3.28084;
+        document.getElementById('distance').textContent = 'GPS Distance: ' + totalDistance.toFixed(2) + ' ft';
+      }
+      trailCoordinates.push(latLng);
+      if (trailLine) trailLine.setLatLngs(trailCoordinates);
+      else trailLine = L.polyline(trailCoordinates, { color: '#00ffe7', weight: 4, opacity: 0.7 }).addTo(map);
+      if (marker) marker.setLatLng(latLng);
+      else marker = L.marker(latLng).addTo(map);
+      map.setView(latLng, 15);
+      lastLatLng = latLng;
+      if (!baroAvailable && elev !== null) {
+        elevProfile.push(elev);
+        drawElevationProfile();
+      }
+    }
+    function getDistanceFromLatLng(l1, l2) {
+      const R = 6371000, toRad = v => (v * Math.PI) / 180;
+      const lat1 = l1[0], lon1 = l1[1], lat2 = l2[0], lon2 = l2[1];
+      const dLat = toRad(lat2 - lat1), dLon = toRad(l2[1] - l1[1]);
+      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+    function handleError(error) {
+      switch(error.code) {
+        case error.PERMISSION_DENIED: alert('Location permission denied.'); break;
+        case error.POSITION_UNAVAILABLE: alert('Location unavailable.'); break;
+        case error.TIMEOUT: alert('Location request timed out.'); break;
+        default: alert('Unknown geolocation error.');
+      }
+    }
+
+    // --- GPX Export ---
+    document.getElementById('exportBtn').onclick = function() {
+      if (!trailCoordinates.length) return alert("No track to export.");
+      let gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Alien Tech GPX Tracker" xmlns="http://www.topografix.com/GPX/1/1">
+<trk><name>Track</name><trkseg>
+${trailCoordinates.map(([lat,lng])=>`<trkpt lat="${lat}" lon="${lng}"></trkpt>`).join('\n')}
+</trkseg></trk>
+${waypoints.map(wpt=>`<wpt lat="${wpt.lat}" lon="${wpt.lng}"><name>${wpt.name||'Waypoint'}</name></wpt>`).join('\n')}
+</gpx>`;
+      let blob = new Blob([gpx], {type:'application/gpx+xml'});
+      let url = URL.createObjectURL(blob);
+      let a = document.createElement('a');
+      a.href = url; a.download = 'track.gpx'; a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    // --- Add Waypoint ---
+    document.getElementById('addWptBtn').onclick = function() {
+      if (!lastLatLng) return alert("No GPS fix yet.");
+      let name = prompt("Waypoint name?", "Waypoint " + (waypoints.length+1));
+      waypoints.push({lat: lastLatLng[0], lng: lastLatLng[1], name: name});
+      let wptMarker = L.marker(lastLatLng, {icon: L.icon({iconUrl:'https://cdn-icons-png.flaticon.com/512/684/684908.png',iconSize:[24,24]})})
+        .addTo(map).bindPopup(name||'Waypoint');
+    };
+
+    // --- Map Style Switch ---
+    document.getElementById('mapStyle').onchange = function() {
+      let style = this.value;
+      Object.values(mapLayers).forEach(l=>map.removeLayer(l));
+      mapLayers[style].addTo(map);
+    };
+
+    // --- Map Init ---
+    function initMap() {
+      map = L.map('map').setView([0, 0], 2);
+      mapLayers.osm.addTo(map);
+    }
+    window.onload = function() {
+      initMap();
+      drawCompass();
+      drawAccelTrail();
+      updateAccelDistanceDisplay();
+      updateAccelDataDisplay();
+      drawElevationProfile();
+      setupBarometer();
+    };
+  </script>
+</body>
+</html>

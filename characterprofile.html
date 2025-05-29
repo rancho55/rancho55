@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Character Profile - Stephen RPG</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+  h1, h2 { margin-bottom: 10px; }
+  .ability-row { display: flex; justify-content: space-between; max-width: 300px; margin: 5px 0; }
+  .ability-row > div { width: 100px; }
+  .modifier { font-weight: bold; }
+  #raceSelection { margin-top: 30px; }
+  #raceSelection button {
+    padding: 10px 15px;
+    margin: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    border: 2px solid #333;
+    background-color: #f0f0f0;
+    border-radius: 5px;
+    transition: background-color 0.3s, border-color 0.3s;
+  }
+  #raceSelection button.selected {
+    background-color: #4CAF50;
+    color: white;
+    border-color: #4CAF50;
+  }
+  #selectedRace {
+    margin-top: 20px;
+    font-size: 1.2rem;
+    font-weight: bold;
+  }
+  #nextClassLink {
+    margin-top: 30px;
+    display: inline-block;
+    padding: 12px 24px;
+    background-color: #007BFF;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  .stat-display {
+    margin-top: 20px;
+    font-size: 1.1rem;
+  }
+  #levelUpBtn {
+    margin-top: 10px;
+    padding: 10px 20px;
+    font-weight: bold;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<h1>Character Profile</h1>
+<div id="charNameDisplay"></div>
+
+<h2>Ability Scores</h2>
+<div class="ability-row"><div>Strength</div><div id="strScore">--</div><div class="modifier" id="strMod"></div></div>
+<div class="ability-row"><div>Dexterity</div><div id="dexScore">--</div><div class="modifier" id="dexMod"></div></div>
+<div class="ability-row"><div>Constitution</div><div id="conScore">--</div><div class="modifier" id="conMod"></div></div>
+<div class="ability-row"><div>Intelligence</div><div id="intScore">--</div><div class="modifier" id="intMod"></div></div>
+<div class="ability-row"><div>Wisdom</div><div id="wisScore">--</div><div class="modifier" id="wisMod"></div></div>
+<div class="ability-row"><div>Charisma</div><div id="chaScore">--</div><div class="modifier" id="chaMod"></div></div>
+
+<div class="stat-display">
+  <p><strong>HP:</strong> <span id="charHP">--</span></p>
+  <p><strong>XP:</strong> <span id="charXP">--</span></p>
+  <p><strong>Level:</strong> <span id="charLevel">--</span></p>
+  <button id="levelUpBtn">Level Up</button>
+</div>
+
+<div id="raceSelection">
+  <h2>Choose Your Race</h2>
+  <button data-race="Human">Human</button>
+  <button data-race="Elf">Elf</button>
+  <button data-race="Half-Elf">Half-Elf</button>
+  <button data-race="Dwarf">Dwarf</button>
+  <button data-race="Halfling">Halfling</button>
+</div>
+
+<div id="selectedRace">Selected Race: <em>None</em></div>
+
+<a href="characterclasses.html" id="nextClassLink">Next: Choose Class</a>
+
+<script>
+  function getModifier(score) {
+    return Math.floor((score - 10) / 2);
+  }
+
+  function calculateLevel(xp) {
+    let level = 1;
+    while (xp >= level * (level - 1) * 500) level++;
+    return level - 1;
+  }
+
+  // Load character data from localStorage
+  let characterData = JSON.parse(localStorage.getItem('characterData'));
+
+  if (!characterData) {
+    alert('No character data found. Please create a character first.');
+    window.location.href = 'main.html';
+  } else {
+    // Set default values if missing
+    characterData.hp = characterData.hp || 10 + getModifier(characterData.abilities.Constitution);
+    characterData.xp = characterData.xp || 0;
+    characterData.level = characterData.level || 1;
+
+    document.getElementById('charNameDisplay').textContent = `Name: ${characterData.name}`;
+
+    const abilities = characterData.abilities;
+
+    document.getElementById('strScore').textContent = abilities.Strength;
+    document.getElementById('dexScore').textContent = abilities.Dexterity;
+    document.getElementById('conScore').textContent = abilities.Constitution;
+    document.getElementById('intScore').textContent = abilities.Intelligence;
+    document.getElementById('wisScore').textContent = abilities.Wisdom;
+    document.getElementById('chaScore').textContent = abilities.Charisma;
+
+    for (const ab of Object.keys(abilities)) {
+      const mod = getModifier(abilities[ab]);
+      document.getElementById(ab.slice(0,3).toLowerCase() + 'Mod').textContent = (mod >= 0 ? '+' : '') + mod;
+    }
+
+    document.getElementById('charHP').textContent = characterData.hp;
+    document.getElementById('charXP').textContent = characterData.xp;
+    document.getElementById('charLevel').textContent = characterData.level;
+
+    // Race display
+    if (characterData.race) {
+      document.getElementById('selectedRace').innerHTML = `Selected Race: <strong>${characterData.race}</strong>`;
+    }
+
+    // Check if ready to level up
+    const nextLevel = characterData.level + 1;
+    const requiredXP = nextLevel * (nextLevel - 1) * 500;
+    if (characterData.xp >= requiredXP) {
+      document.getElementById('levelUpBtn').style.display = 'inline-block';
+    }
+  }
+
+  // Race selection
+  const raceButtons = document.querySelectorAll('#raceSelection button');
+  raceButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      raceButtons.forEach(btn => btn.classList.remove('selected'));
+      button.classList.add('selected');
+      const race = button.getAttribute('data-race');
+      document.getElementById('selectedRace').innerHTML = `Selected Race: <strong>${race}</strong>`;
+      characterData.race = race;
+      localStorage.setItem('characterData', JSON.stringify(characterData));
+    });
+  });
+
+  // Level Up Logic
+  document.getElementById('levelUpBtn').addEventListener('click', () => {
+    characterData.level++;
+    const conMod = getModifier(characterData.abilities.Constitution);
+    characterData.hp += 10 + conMod;
+    localStorage.setItem('characterData', JSON.stringify(characterData));
+    alert(`You reached level ${characterData.level}!`);
+    location.reload();
+  });
+</script>
+
+</body>
+</html>

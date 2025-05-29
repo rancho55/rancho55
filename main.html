@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Start Game - Stephen RPG</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+    }
+    input, button {
+      font-size: 1rem;
+      padding: 8px;
+      margin: 5px 0;
+    }
+    .ability-row {
+      display: flex;
+      justify-content: space-between;
+      max-width: 300px;
+      margin: 5px 0;
+    }
+    .ability-row > div {
+      width: 100px;
+    }
+    .modifier {
+      font-weight: bold;
+    }
+    #rollResults {
+      margin-top: 20px;
+    }
+    #nextBtn {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Welcome to Stephen RPG</h1>
+
+<label for="charName">Enter your character's name:</label><br />
+<input type="text" id="charName" placeholder="Character Name" /><br />
+
+<button id="rollBtn">Roll Ability Scores</button>
+
+<div id="rollResults" style="display:none;">
+  <h2>Ability Scores</h2>
+  <div class="ability-row"><div>Strength</div><div id="strScore">--</div><div class="modifier" id="strMod"></div></div>
+  <div class="ability-row"><div>Dexterity</div><div id="dexScore">--</div><div class="modifier" id="dexMod"></div></div>
+  <div class="ability-row"><div>Constitution</div><div id="conScore">--</div><div class="modifier" id="conMod"></div></div>
+  <div class="ability-row"><div>Intelligence</div><div id="intScore">--</div><div class="modifier" id="intMod"></div></div>
+  <div class="ability-row"><div>Wisdom</div><div id="wisScore">--</div><div class="modifier" id="wisMod"></div></div>
+  <div class="ability-row"><div>Charisma</div><div id="chaScore">--</div><div class="modifier" id="chaMod"></div></div>
+
+  <h3>Base Stats</h3>
+  <div><strong>HP:</strong> <span id="charHP">--</span></div>
+  <div><strong>Level:</strong> <span id="charLevel">1</span></div>
+  <div><strong>XP:</strong> <span id="charXP">0</span></div>
+</div>
+
+<button id="nextBtn" disabled>Next: Choose Race</button>
+
+<script>
+  function rollAbility() {
+    let rolls = [];
+    for (let i = 0; i < 4; i++) {
+      rolls.push(Math.floor(Math.random() * 6) + 1);
+    }
+    rolls.sort((a,b) => a - b);
+    rolls.shift(); // drop lowest
+    return rolls.reduce((a,b) => a + b, 0);
+  }
+
+  function getModifier(score) {
+    return Math.floor((score - 10) / 2);
+  }
+
+  const rollBtn = document.getElementById('rollBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const charNameInput = document.getElementById('charName');
+
+  let abilityScores = {};
+
+  rollBtn.onclick = () => {
+    if (!charNameInput.value.trim()) {
+      alert('Please enter a character name first.');
+      return;
+    }
+
+    abilityScores = {
+      Strength: rollAbility(),
+      Dexterity: rollAbility(),
+      Constitution: rollAbility(),
+      Intelligence: rollAbility(),
+      Wisdom: rollAbility(),
+      Charisma: rollAbility()
+    };
+
+    // Display scores
+    document.getElementById('strScore').textContent = abilityScores.Strength;
+    document.getElementById('dexScore').textContent = abilityScores.Dexterity;
+    document.getElementById('conScore').textContent = abilityScores.Constitution;
+    document.getElementById('intScore').textContent = abilityScores.Intelligence;
+    document.getElementById('wisScore').textContent = abilityScores.Wisdom;
+    document.getElementById('chaScore').textContent = abilityScores.Charisma;
+
+    // Show modifiers
+    for (const ab of Object.keys(abilityScores)) {
+      const mod = getModifier(abilityScores[ab]);
+      const modText = (mod >= 0 ? '+' : '') + mod;
+      document.getElementById(ab.slice(0,3).toLowerCase() + 'Mod').textContent = modText;
+    }
+
+    // Base Stats
+    const conMod = getModifier(abilityScores.Constitution);
+    const startingHP = 10 + conMod;
+    const startingXP = 0;
+    const startingLevel = 1;
+
+    document.getElementById('charHP').textContent = startingHP;
+    document.getElementById('charXP').textContent = startingXP;
+    document.getElementById('charLevel').textContent = startingLevel;
+
+    // Save character
+    const characterData = {
+      name: charNameInput.value.trim(),
+      level: startingLevel,
+      xp: startingXP,
+      hp: startingHP,
+      abilities: abilityScores
+    };
+
+    localStorage.setItem('characterData', JSON.stringify(characterData));
+
+    document.getElementById('rollResults').style.display = 'block';
+    nextBtn.disabled = false;
+  };
+
+  nextBtn.onclick = () => {
+    window.location.href = 'characterprofile.html';
+  };
+</script>
+
+</body>
+</html>

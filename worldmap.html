@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Stephen RPG - World Map</title>
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+  crossorigin=""
+/>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    max-width: 900px;
+    margin: auto;
+    padding: 20px;
+  }
+  #characterInfo {
+    background: #f4f4f4;
+    padding: 15px;
+    border-radius: 8px;
+  }
+  #map {
+    height: 500px;
+    margin-top: 20px;
+    border: 2px solid #333;
+  }
+  #addNpcPanel {
+    margin-top: 15px;
+    background: #eef;
+    padding: 10px;
+    border-radius: 6px;
+  }
+  label {
+    font-weight: bold;
+  }
+  input, select, button {
+    margin-top: 5px;
+    padding: 6px;
+    font-size: 1rem;
+  }
+  ul#abilityList {
+    list-style-type: none;
+    padding-left: 0;
+  }
+</style>
+</head>
+<body>
+
+<h1>Stephen RPG - World Map</h1>
+
+<div id="characterInfo">
+  <h2>Character Info</h2>
+  <div><strong>Name:</strong> <span id="charName">Loading...</span></div>
+  <div><strong>Race:</strong> <span id="charRace">Loading...</span></div>
+  <div><strong>Class:</strong> <span id="charClass">Loading...</span></div>
+  <div><strong>Level:</strong> <span id="charLevel">Loading...</span></div>
+  <div><strong>XP:</strong> <span id="charXP">Loading...</span></div>
+  <div><strong>HP:</strong> <span id="charHP">Loading...</span></div>
+  <h3>Abilities</h3>
+  <ul id="abilityList"></ul>
+  <h3>Inventory</h3>
+  <ul id="inventoryList"></ul>
+  <div><strong>Current GPS Coordinates:</strong> <span id="gpsCoords">Waiting for GPS...</span></div>
+</div>
+
+<div id="map"></div>
+
+<div id="addNpcPanel">
+  <h3>Add NPC / Creature to Map</h3>
+  <label for="npcName">Name:</label><br />
+  <input type="text" id="npcName" placeholder="Creature or NPC Name" /><br />
+  
+  <label for="npcType">Type:</label><br />
+  <select id="npcType">
+    <option value="Animal">Animal</option>
+    <option value="Person">Person</option>
+    <option value="Monster">Monster</option>
+    <option value="Other">Other</option>
+  </select><br />
+  
+  <button id="addNpcBtn">Add NPC Here (at your current location)</button>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js" crossorigin=""></script>
+<script>
+  // Load character data (from localStorage or defaults)
+  const characterData = JSON.parse(localStorage.getItem('characterData')) || {
+    name: 'Unknown',
+    race: 'Unknown',
+    class: 'Unknown',
+    abilities: {},
+    inventory: [],
+    hp: 20,
+    xp: 0,
+    level: 1
+  };
+
+  // Show character info including HP, XP, level
+  document.getElementById('charName').textContent = characterData.name || 'Unknown';
+  document.getElementById('charRace').textContent = characterData.race || 'Unknown';
+  document.getElementById('charClass').textContent = characterData.class || 'Unknown';
+  document.getElementById('charLevel').textContent = characterData.level || 1;
+  document.getElementById('charXP').textContent = characterData.xp || 0;
+  document.getElementById('charHP').textContent = characterData.hp || 20;
+
+  const abilityList = document.getElementById('abilityList');
+  abilityList.innerHTML = '';
+  if (characterData.abilities) {
+    for (const [ability, score] of Object.entries(characterData.abilities)) {
+      const mod = Math.floor((score - 10) / 2);
+      const modText = (mod >= 0 ? '+' : '') + mod;
+      const li = document.createElement('li');
+      li.textContent = `${ability}: ${score} (Modifier: ${modText})`;
+      abilityList.appendChild(li);
+    }
+  }
+
+  const inventoryList = document.getElementById('inventoryList');
+  inventoryList.innerHTML = '';
+  if (characterData.inventory && characterData.inventory.length) {
+    characterData.inventory.forEach(item => {
+      const li = document.createElement('li');
+      li.textContent = item;
+      inventoryList.appendChild(li);
+    });
+  } else {
+    inventoryList.textContent = 'Inventory is empty';
+  }
+
+  // Initialize Leaflet map centered on default location
+  const map = L.map('map').setView([51.505, -0.09], 13);
+
+  // Add OpenStreetMap tile layer
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+  }).addTo(map);
+
+  // GPS tracking and trail
+  let trailCoords = [];
+  let trailPolyline = null;
+  let playerMarker = null;
+  const gpsCoordsSpan = document.getElementById('gpsCoords');
+
+  function updatePosition(pos) {
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+    gpsCoordsSpan.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+    const latlng = [lat, lng];
+    trailCoords.push(latlng);
+
+    if (!trailPolyline) {
+      trailPolyline = L.polyline(trailCoords, { color: 'blue' }).addTo(map);
+    } else {
+      trailPolyline.setLatLngs(trailCoords);
+    }
+
+    if (!playerMarker) {
+      playerMarker = L.marker(latlng, { title: "You" }).addTo(map);
+    } else {
+      playerMarker.setLatLng(latlng);
+    }
+
+    map.setView(latlng, 15);
+  }
+
+  function gpsError(err) {
+    gpsCoordsSpan.textContent = 'GPS error: ' + err.message;
+  }
+
+  if (navigator.geolocation) {
+    navigator.geolocation.watchPosition(updatePosition, gpsError, {
+      enableHighAccuracy: true,
+      maximumAge: 10000,
+      timeout: 5000,
+    });
+  } else {
+    gpsCoordsSpan.textContent = 'Geolocation not supported.';
+  }
+
+  // Add Home marker on map (example fixed coords)
+  const homeCoords = [51.504, -0.08];
+  L.marker(homeCoords, { title: "Home", icon: L.icon({
+    iconUrl: 'https://cdn-icons-png.flaticon.com/512/69/69524.png',
+    iconSize: [30, 30],
+  })}).addTo(map).bindPopup("<b>Home</b>");
+
+  // Store NPC markers added by user
+  let npcMarkers = [];
+
+  // Function to add NPC marker on map
+  function addNpcMarker(name, type, latlng) {
+    const iconUrl = {
+      'Animal': 'https://cdn-icons-png.flaticon.com/512/616/616408.png',
+      'Person': 'https://cdn-icons-png.flaticon.com/512/1077/1077114.png',
+      'Monster': 'https://cdn-icons-png.flaticon.com/512/616/616408.png',
+      'Other': 'https://cdn-icons-png.flaticon.com/512/565/565547.png'
+    }[type] || 'https://cdn-icons-png.flaticon.com/512/565/565547.png';
+
+    const icon = L.icon({
+      iconUrl,
+      iconSize: [32, 32],
+      iconAnchor: [16, 32],
+      popupAnchor: [0, -32]
+    });
+
+    const marker = L.marker(latlng, { icon, title: name }).addTo(map);
+    marker.bindPopup(`<b>${name}</b><br>Type: ${type}<br><i>Click to battle!</i>`);
+    
+    marker.on('click', () => {
+      // Save current NPC data for battle page
+      const npcData = { name, type, latlng };
+      localStorage.setItem('battleNpc', JSON.stringify(npcData));
+      // Redirect to battle.html
+      window.location.href = 'battle.html';
+    });
+
+    npcMarkers.push(marker);
+  }
+
+  // Add NPC button handler
+  document.getElementById('addNpcBtn').onclick = () => {
+    const nameInput = document.getElementById('npcName');
+    const typeSelect = document.getElementById('npcType');
+    const name = nameInput.value.trim();
+    const type = typeSelect.value;
+
+    if (!name) {
+      alert('Please enter a name for the NPC or creature.');
+      return;
+    }
+    if (!playerMarker) {
+      alert('Waiting for GPS location to add NPC.');
+      return;
+    }
+
+    const latlng = playerMarker.getLatLng();
+    addNpcMarker(name, type, [latlng.lat, latlng.lng]);
+    nameInput.value = '';
+  };
+
+  // Add Skull marker for defeated enemies from battleResult in localStorage
+  const battleResultStr = localStorage.getItem('battleResult');
+  if (battleResultStr) {
+    try {
+      const battleResult = JSON.parse(battleResultStr);
+      if (battleResult.latlng && battleResult.xpGained != null) {
+        const skullIcon = L.icon({
+          iconUrl: 'https://cdn-icons-png.flaticon.com/512/109/109602.png',
+          iconSize: [28, 28],
+          iconAnchor: [14, 28],
+          popupAnchor: [0, -28]
+        });
+        const skullMarker = L.marker(battleResult.latlng, { icon: skullIcon, title: "Defeated Enemy" }).addTo(map);
+        skullMarker.bindPopup(
+          `<b>Defeated Enemy</b><br>` +
+          `Location: ${battleResult.latlng[0].toFixed(6)}, ${battleResult.latlng[1].toFixed(6)}<br>` +
+          `XP gained: ${battleResult.xpGained}`
+        );
+
+        // Center map on skull for player to see
+        map.setView(battleResult.latlng, 15);
+      }
+      // Clear battleResult so marker isn't duplicated on reload
+      localStorage.removeItem('battleResult');
+    } catch(e) {
+      console.error('Error parsing battleResult:', e);
+    }
+  }
+
+</script>
+</body>
+</html>

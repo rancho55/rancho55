@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Alien Tech GPX Tracker: Ultra Accurate</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap');
+        body {
+            margin:0; font-family:'Orbitron', 'Consolas', monospace;
+            background:linear-gradient(135deg, #0f2027 0%, #2c5364 100%);
+            color:#bafff5; letter-spacing:1.2px;
+            overflow-x:hidden;
+        }
+        h3 { margin:0 0 8px 0; color:#00ffe7; text-shadow:0 0 8px #00ffe7, 0 0 2px #fff;}
+        #map {
+            height:40vh; min-height:220px; width:100vw;
+            box-shadow:0 0 40px 10px #00ffe7, 0 0 100px 20px #0ff4, 0 0 0 4px #0ff2 inset;
+            border-radius:22px; margin-bottom:10px;
+            animation: alienGlow 3s infinite alternate;
+        }
+        @keyframes alienGlow {
+            0% { box-shadow:0 0 40px 10px #00ffe7, 0 0 100px 20px #0ff4, 0 0 0 4px #0ff2 inset; }
+            100% { box-shadow:0 0 80px 20px #00ffe7, 0 0 200px 40px #0ff4, 0 0 0 8px #0ff2 inset; }
+        }
+        .panel {
+            padding:18px 24px 10px 24px;
+            background:rgba(0,30,40,0.85);
+            border-radius:0 0 22px 22px;
+            box-shadow:0 0 40px #00ffe7 inset;
+            margin-bottom:10px;
+            position:relative;
+            z-index:2;
+        }
+        .alien-btn, .export-btn, .waypoint-btn, .compass-btn, .map-lock-btn, select { /* Added .map-lock-btn */
+            background:linear-gradient(90deg,#0ff,#00ffe7 70%,#0ff);
+            color:#101a1c; border:none; border-radius:8px; padding:10px 22px;
+            font-size:17px; font-weight:700; cursor:pointer; margin:10px 8px 10px 0;
+            box-shadow:0 0 12px #00ffe7,0 0 2px #fff inset;
+            text-shadow:0 0 2px #fff;
+            transition:background 0.2s, box-shadow 0.2s, transform 0.1s;
+            outline:none;
+        }
+        .alien-btn:disabled {background:#222;color:#888;}
+        .alien-btn:hover:not(:disabled), .export-btn:hover, .waypoint-btn:hover, .compass-btn:hover, .map-lock-btn:hover {
+            background:linear-gradient(90deg,#00ffe7,#0ff 70%,#00ffe7);
+            box-shadow:0 0 32px #00ffe7,0 0 8px #fff inset;
+            transform:scale(1.08);
+        }
+        .export-btn {background:linear-gradient(90deg,#00e0ff,#00ffe7);}
+        .waypoint-btn {background:linear-gradient(90deg,#ffeb3b,#00ffe7);}
+        .map-lock-btn.active {
+            background:linear-gradient(90deg, #ffeb3b, #ffa500); /* Active glow for lock */
+            box-shadow:0 0 32px #ffeb3b,0 0 8px #fff inset;
+        }
+
+        select {
+            background:#101a1c; color:#00ffe7; border:1px solid #00ffe7;
+            font-family:inherit; margin-left:8px; font-size:16px;
+        }
+        #distance, #accuracy, #coords, #gyroData, #baroData, #gpsAltitude, #weatherInfo, #speed, #avgSpeed, #maxSpeed, #timer, #cog, #verticalSpeed, #batteryStatus { /* Added new IDs */
+            font-size:18px; margin-top:4px; color:#bafff5; text-shadow:0 0 2px #0ff;
+        }
+        .weather-panel {
+            background:rgba(10,40,60,0.7); padding:10px 20px; margin:10px 0;
+            border-radius:16px; box-shadow:0 0 20px #00ffe7;
+            border:2px solid #00ffe7;
+            animation: alienWeather 2s infinite alternate;
+        }
+        @keyframes alienWeather {
+            0% { box-shadow:0 0 20px #00ffe7; }
+            100% { box-shadow:0 0 40px #00ffe7; }
+        }
+        .accel-panel, .elev-panel, .metrics-panel {
+            width: 100vw; background:rgba(0,20,40,0.7); box-shadow:0 0 24px #00ffe7 inset;
+            border-radius: 0 0 22px 22px; margin-top: 0; padding-bottom: 18px;
+            margin-bottom:12px;
+        }
+        .accel-header, .elev-header, .metrics-header {
+            font-size: 22px; font-weight: 700; color:#00ffe7; padding: 18px 24px 8px 24px;
+            text-shadow:0 0 12px #00ffe7;
+            letter-spacing:2px;
+        }
+        .accel-info, .elev-info, .metrics-info {
+            display: flex; flex-wrap: wrap; gap: 24px; padding: 0 24px 10px 24px;
+            font-size: 17px; color: #bafff5;
+        }
+        #accelCanvas, #elevCanvas {
+            display: block; margin: 0 auto; background:rgba(0,255,255,0.08);
+            border: 2.5px solid #00ffe7; border-radius: 12px; margin-top: 10px;
+            box-shadow:0 0 20px #00ffe7 inset;
+            animation: alienPanel 2s infinite alternate;
+        }
+        @keyframes alienPanel {
+            0% { box-shadow:0 0 20px #00ffe7 inset; }
+            100% { box-shadow:0 0 40px #00ffe7 inset; }
+        }
+        .compass-panel {
+            display:flex;flex-direction:column;align-items:center;justify-content:center;margin:20px 0;
+        }
+        #compassCanvas {
+            background:rgba(0,255,255,0.04); border:2.5px solid #00ffe7; border-radius:50%;margin:10px;
+            box-shadow:0 0 24px #00ffe7 inset;
+            animation: alienPanel 2s infinite alternate;
+        }
+        .compass-btn {margin-top:0;}
+        #alien-tip {
+            color:#ffeb3b;font-size:16px;margin-top:8px;text-shadow:0 0 2px #ffeb3b;
+        }
+        #calibModal {
+            display:none; position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:999;
+            background:rgba(0,0,0,0.93);justify-content:center;align-items:center;flex-direction:column;
+            text-align:center;
+        }
+        #calibModal.active {display:flex;}
+        #calibModal h2 {color:#00ffe7;text-shadow:0 0 16px #00ffe7;}
+        #calibModal .calib-instr {color:#ffeb3b;font-size:20px;margin:20px 0;}
+        #calibModal .calib-progress {color:#0ff;font-size:18px;margin:10px 0;}
+        #calibModal button {margin-top:24px;}
+        @media (max-width: 600px) {
+            .panel {padding:10px 4px;}
+            .accel-header, .accel-info, .elev-header, .elev-info, .metrics-header, .metrics-info {padding: 10px; font-size: 15px;}
+            #accelCanvas, #elevCanvas {width: 95vw !important;}
+        }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <button class="alien-btn" id="requestMotionBtn">Allow Motion Access</button>
+        <button class="alien-btn" id="startBtn" disabled>Start Tracking</button>
+        <button class="alien-btn" id="stopBtn" disabled>Stop Tracking</button>
+        <button class="alien-btn" id="resetBtn">Reset</button>
+        <button class="export-btn" id="exportBtn">Export GPX</button>
+        <button class="waypoint-btn" id="addWptBtn">Add Waypoint</button>
+        <select id="mapStyle">
+            <option value="osm">Street</option>
+            <option value="otm">Topo</option>
+            <option value="satellite">Satellite</option>
+        </select>
+        <button class="map-lock-btn alien-btn" id="lockMapBtn">Lock Map to User</button> <span id="distance">GPS Distance: 0.00 ft</span>
+        <span id="accuracy">Accuracy: --</span>
+        <div id="coords">Coordinates: N/A</div>
+        <div>GPS Alt: <span id="gpsAltitude">--</span></div> <div>Barometer: <span id="baroData">--</span></div>
+        <div>Gyro: <span id="gyroData">x:0, y:0, z:0</span></div>
+        <div>Battery: <span id="batteryStatus">--</span></div> <div id="alien-tip">👽 Tip: Enable GPS & Wi-Fi, go outside, and wait for accuracy to improve for best results.</div>
+    </div>
+    <div id="map"></div>
+    <div class="weather-panel">
+        <h3>Local Weather</h3>
+        <div id="weatherInfo">Loading...</div>
+    </div>
+    <div class="accel-panel">
+        <div class="accel-header">Accelerometer Trail & Data (Calibrated & Filtered)</div>
+        <canvas id="accelCanvas" width="350" height="200"></canvas>
+        <div class="accel-info">
+            <span id="accelDistance">Accelerometer Distance: 0.00 feet (visual only)</span>
+            <span id="accelData">x: 0, y: 0, z: 0</span>
+        </div>
+    </div>
+    <div class="elev-panel">
+        <div class="elev-header">Elevation Profile</div>
+        <canvas id="elevCanvas" width="350" height="100"></canvas>
+        <div class="elev-info">
+            <span id="elevMin">Min: --</span>
+            <span id="elevMax">Max: --</span>
+            <span id="elevGain">Gain: --</span>
+            <span id="verticalSpeed">Vertical Speed: --</span> </div>
+    </div>
+    <div class="compass-panel">
+        <canvas id="compassCanvas" width="120" height="120"></canvas>
+        <div id="compassLabel">Heading: 0° (Magnetic North)</div>
+        <button class="compass-btn alien-btn" id="toggleNorthBtn">Switch to True North</button>
+    </div>
+
+    <div class="metrics-panel">
+        <div class="metrics-header">Current Metrics</div>
+        <div class="metrics-info">
+            <span id="speed">Speed: 0.00 MPH</span>
+            <span id="avgSpeed">Avg Speed: 0.00 MPH</span> <span id="maxSpeed">Max Speed: 0.00 MPH</span> <span id="cog">COG: --</span> <span id="timer">Tracking Time: 00:00:00</span>
+        </div>
+    </div>
+
+    <div id="calibModal">
+        <div>
+            <h2>Accelerometer Calibration</h2>
+            <div class="calib-instr" id="calibInstr">Place your device flat, screen UP, and keep still.<br>Calibration will start automatically.</div>
+            <div class="calib-progress" id="calibProgress"></div>
+            <button class="alien-btn" id="calibSkipBtn" style="display:none;">Skip Calibration</button>
+        </div>
+    </div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // --- MAP LAYERS ---
+        const mapLayers = {
+            osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors' }),
+            otm: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { attribution: '© OpenTopoMap contributors' }),
+            satellite: L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+                subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+                attribution: '© Google Satellite'
+            })
+        };
+        let map, trailLine, marker, totalDistance = 0, lastLatLng = null, watchId = null,
+            trailCoordinates = [], elevProfile = [], waypoints = [];
+        const MIN_DISTANCE = 3, MAX_DISTANCE = 30, GPS_AVG_WINDOW = 3, GPS_SMOOTH_ALPHA = 0.6, ACCURACY_THRESHOLD = 20;
+        let isDeviceMoving = false, accelerationThreshold = 0.18, accelWindow = [], ACCEL_WINDOW_SIZE = 8, allowGPS = false;
+
+        // --- Timer and Speed variables ---
+        let startTime = null;
+        let timerInterval = null;
+        let lastKnownSpeed = 0; // In MPH
+        let maxSpeed = 0; // In MPH
+        let totalSpeedSum = 0;
+        let speedReadingsCount = 0;
+        let lastTimestamp = null; // For speed calculation
+        let totalTrackingTimeSeconds = 0; // For average speed
+
+        // --- Elevation Tracking ---
+        let lastElevation = null; // for vertical speed calculation
+        let lastElevationTimestamp = null; // for vertical speed calculation
+
+        // --- Map Lock ---
+        let lockMapToUser = false;
+
+        // --- Custom Marker Icon ---
+        const alienIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png', // A green alien-ish marker
+            // You can replace this with a custom SVG or PNG for a truly alien look
+            // Example custom icon: 'data:image/svg+xml;utf8,<svg ...>' (a bit verbose for inline)
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+            shadowSize: [41, 41]
+        });
+
+        // --- Gyroscope/Accelerometer ---
+        let lastGyro = {x:0, y:0, z:0}, lastAccel = {x:0, y:0, z:0};
+
+        // --- Accelerometer Calibration and Filtering ---
+        let calib = {
+            zUp: null, zDown: null, offset: 0, gain: 1, done: false
+        };
+        let filteredAccel = {x:0, y:0, z:0};
+        const alpha = 0.2; // smoothing factor
+
+        // Calibration wizard
+        function showCalibModal() {
+            const modal = document.getElementById('calibModal');
+            const instr = document.getElementById('calibInstr');
+            const progress = document.getElementById('calibProgress');
+            const skipBtn = document.getElementById('calibSkipBtn');
+            modal.classList.add('active');
+            skipBtn.style.display = 'none';
+            let upSamples = [], downSamples = [];
+            instr.innerHTML = "Place your device flat, screen <b>UP</b>, and keep still.<br>Calibration will start automatically.";
+            progress.innerHTML = "Collecting data: 0%";
+            let phase = 0, t = 0;
+            let interval = setInterval(() => {
+                if (phase === 0) {
+                    // Collect Z-up samples for 2 seconds (20 * 100ms = 2s)
+                    if (t < 20) {
+                        upSamples.push(lastAccel.z);
+                        progress.innerHTML = `Collecting data: ${(t/20*100).toFixed(0)}%`;
+                        t++;
+                    } else {
+                        phase = 1; t = 0;
+                        instr.innerHTML = "Now place your device flat, screen <b>DOWN</b>, and keep still.";
+                        progress.innerHTML = "Collecting data: 0%";
+                    }
+                } else if (phase === 1) {
+                    // Collect Z-down samples for 2 seconds (20 * 100ms = 2s)
+                    if (t < 20) {
+                        downSamples.push(lastAccel.z);
+                        progress.innerHTML = `Collecting data: ${(t/20*100).toFixed(0)}%`;
+                        t++;
+                    } else {
+                        clearInterval(interval);
+                        // Calculate offset and gain
+                        calib.zUp = upSamples.reduce((a,b)=>a+b,0)/upSamples.length;
+                        calib.zDown = downSamples.reduce((a,b)=>a+b,0)/downSamples.length;
+                        calib.offset = (calib.zUp + calib.zDown) / 2;
+                        calib.gain = (calib.zUp - calib.zDown) / 2;
+                        calib.done = true;
+                        modal.classList.remove('active');
+                        alert("Calibration complete!\nOffset: "+calib.offset.toFixed(3)+"\nGain: "+calib.gain.toFixed(3));
+                    }
+                }
+            }, 100);
+            skipBtn.onclick = () => {
+                clearInterval(interval);
+                calib.done = false; // Calibration skipped
+                modal.classList.remove('active');
+            };
+            skipBtn.style.display = 'inline-block';
+        }
+
+        // Apply calibration and smoothing
+        function calibrateAndFilter(raw) {
+            // Calibrate
+            let x = calib.done ? (raw.x - calib.offset) / calib.gain : raw.x;
+            let y = calib.done ? (raw.y - calib.offset) / calib.gain : raw.y;
+            let z = calib.done ? (raw.z - calib.offset) / calib.gain : raw.z;
+            // Low-pass filter
+            filteredAccel.x = alpha * x + (1 - alpha) * filteredAccel.x;
+            filteredAccel.y = alpha * y + (1 - alpha) * filteredAccel.y;
+            filteredAccel.z = alpha * z + (1 - alpha) * filteredAccel.z;
+            return {...filteredAccel};
+        }
+
+        // --- Accelerometer Trail Visualization ---
+        const canvas = document.getElementById('accelCanvas');
+        const ctx = canvas.getContext('2d');
+        const CANVAS_CENTER = { x: canvas.width / 2, y: canvas.height / 2 };
+        let accelTrail = [ {...CANVAS_CENTER} ], accelDistance = 0, prevAccelPoint = {...CANVAS_CENTER}, lastAccelForTrail = {x: 0, y: 0, z: 0};
+        const ACCEL_MOVEMENT_THRESHOLD = 0.14;
+
+        function drawAccelTrail() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.beginPath(); ctx.moveTo(accelTrail[0].x, accelTrail[0].y);
+            for (let i = 1; i < accelTrail.length; i++) ctx.lineTo(accelTrail[i].x, accelTrail[i].y);
+            ctx.strokeStyle = '#00ffe7'; ctx.lineWidth = 3; ctx.shadowColor = "#00ffe7"; ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowBlur = 0;
+        }
+        function updateAccelDistanceDisplay() {
+            document.getElementById('accelDistance').innerText =
+                'Accelerometer Distance: ' + accelDistance.toFixed(2) + ' feet (visual only)';
+        }
+        function updateAccelDataDisplay() {
+            document.getElementById('accelData').innerText =
+                `x: ${lastAccelForTrail.x.toFixed(2)}, y: ${lastAccelForTrail.y.toFixed(2)}, z: ${lastAccelForTrail.z.toFixed(2)}`;
+        }
+
+        // --- Compass ---
+        let compassHeading = 0, useTrueNorth = false, magDeclination = 0;
+        const compassCanvas = document.getElementById('compassCanvas');
+        const compassCtx = compassCanvas.getContext('2d');
+        function handleOrientation(event) {
+            let heading;
+            if (useTrueNorth && event.webkitCompassHeading !== undefined) heading = event.webkitCompassHeading;
+            else if (event.absolute && event.alpha !== null) heading = 360 - event.alpha; // Absolute orientation
+            else if (event.alpha !== null) heading = 360 - event.alpha; // Relative orientation, can drift
+            else heading = 0; // Default if no data
+            if (useTrueNorth && event.webkitCompassHeading === undefined) heading += magDeclination; // Adjust for magnetic declination if not absolute
+            compassHeading = (heading + 360) % 360;
+            drawCompass();
+        }
+        function drawCompass() {
+            compassCtx.clearRect(0,0,120,120);
+            compassCtx.beginPath(); compassCtx.arc(60,60,50,0,2*Math.PI);
+            compassCtx.strokeStyle="#00ffe7"; compassCtx.lineWidth=4; compassCtx.shadowColor="#00ffe7"; compassCtx.shadowBlur=10; compassCtx.stroke(); compassCtx.shadowBlur=0;
+            compassCtx.save(); compassCtx.translate(60,60);
+            compassCtx.rotate((compassHeading-0)*Math.PI/180);
+            compassCtx.beginPath(); compassCtx.moveTo(0,0); compassCtx.lineTo(0,-40);
+            compassCtx.strokeStyle="#ffeb3b"; compassCtx.lineWidth=5; compassCtx.stroke();
+            compassCtx.beginPath(); compassCtx.moveTo(0,0); compassCtx.lineTo(0,30);
+            compassCtx.strokeStyle="#00ffe7"; compassCtx.lineWidth=3; compassCtx.stroke();
+            compassCtx.restore();
+            compassCtx.font="18px Orbitron, Arial"; compassCtx.fillStyle="#00ffe7";
+            compassCtx.textAlign="center"; compassCtx.fillText("N",60,25);
+            document.getElementById('compassLabel').textContent =
+                `Heading: ${compassHeading.toFixed(0)}° (${useTrueNorth ? "True North":"Magnetic North"})`;
+        }
+        document.getElementById('toggleNorthBtn').onclick = function() {
+            useTrueNorth = !useTrueNorth;
+            this.textContent = useTrueNorth ? "Switch to Magnetic North" : "Switch to True North";
+            drawCompass();
+        };
+
+        // --- Barometer ---
+        let baroAvailable = false, baroAlt = null, baroAlt0 = null;
+        function setupBarometer() {
+            if ('Barometer' in window) {
+                try {
+                    let baro = new Barometer({frequency: 1}); // 1 Hz for more frequent updates
+                    baro.addEventListener('reading', () => {
+                        // Using a simplified barometric formula for altitude relative to sea level
+                        // More accurately, you'd need local sea level pressure or calibrate at known altitude
+                        let alt = 44330 * (1 - Math.pow(baro.pressure/1013.25, 1/5.255));
+                        if (!baroAlt0) baroAlt0 = alt; // Set initial reference altitude
+                        baroAlt = alt - baroAlt0; // Altitude relative to start
+                        document.getElementById('baroData').textContent = `Alt: ${baroAlt.toFixed(1)} m (${baro.pressure.toFixed(1)} hPa)`;
+                        // Push to elevProfile only if tracking is active
+                        if (watchId) { elevProfile.push(baroAlt); drawElevationProfile(); }
+                    });
+                    baro.start();
+                    baroAvailable = true;
+                } catch (e) {
+                    document.getElementById('baroData').textContent = 'Not supported';
+                    console.error("Barometer API error:", e);
+                }
+            } else {
+                document.getElementById('baroData').textContent = 'Not supported';
+            }
+        }
+
+        // --- Battery Status ---
+        function setupBatteryStatus() {
+            if ('getBattery' in navigator) {
+                navigator.getBattery().then(battery => {
+                    function updateBatteryInfo() {
+                        const level = (battery.level * 100).toFixed(0);
+                        const charging = battery.charging ? ' (Charging)' : '';
+                        document.getElementById('batteryStatus').textContent = `${level}%${charging}`;
+                        if (level < 20 && !battery.charging) {
+                            document.getElementById('batteryStatus').style.color = '#ff4d4d'; // Red for low battery
+                        } else {
+                            document.getElementById('batteryStatus').style.color = '#bafff5'; // Default color
+                        }
+                    }
+                    battery.addEventListener('levelchange', updateBatteryInfo);
+                    battery.addEventListener('chargingchange', updateBatteryInfo);
+                    updateBatteryInfo(); // Initial call
+                }).catch(e => {
+                    document.getElementById('batteryStatus').textContent = 'Error';
+                    console.error("Battery API error:", e);
+                });
+            } else {
+                document.getElementById('batteryStatus').textContent = 'Not supported';
+            }
+        }
+
+
+        // --- Elevation Profile ---
+        const elevCanvas = document.getElementById('elevCanvas');
+        const elevCtx = elevCanvas.getContext('2d');
+        function drawElevationProfile() {
+            elevCtx.clearRect(0,0,elevCanvas.width,elevCanvas.height);
+            if (!elevProfile.length) {
+                document.getElementById('elevMin').textContent = 'Min: --';
+                document.getElementById('elevMax').textContent = 'Max: --';
+                document.getElementById('elevGain').textContent = 'Gain: --';
+                document.getElementById('verticalSpeed').textContent = 'Vertical Speed: --';
+                return;
+            }
+
+            let min = Math.min(...elevProfile), max = Math.max(...elevProfile), gain = 0;
+            for (let i=1;i<elevProfile.length;i++) {
+                if (elevProfile[i]>elevProfile[i-1]) gain += elevProfile[i]-elevProfile[i-1];
+            }
+            document.getElementById('elevMin').textContent = 'Min: '+min.toFixed(1)+' m';
+            document.getElementById('elevMax').textContent = 'Max: '+max.toFixed(1)+' m';
+            document.getElementById('elevGain').textContent = 'Gain: '+gain.toFixed(1)+' m';
+
+            // Vertical Speed Calculation (based on last few points)
+            if (elevProfile.length > 1 && lastElevationTimestamp) {
+                const currentElevation = elevProfile[elevProfile.length - 1];
+                const timeDiffSeconds = (new Date().getTime() - lastElevationTimestamp) / 1000;
+                if (timeDiffSeconds > 0) {
+                    const elevChange = currentElevation - lastElevation;
+                    const vSpeed = elevChange / timeDiffSeconds; // meters per second
+                    document.getElementById('verticalSpeed').textContent = `Vertical Speed: ${vSpeed.toFixed(2)} m/s`;
+                }
+            }
+            lastElevation = elevProfile[elevProfile.length - 1];
+            lastElevationTimestamp = new Date().getTime();
+
+            elevCtx.beginPath();
+            for(let i=0;i<elevProfile.length;i++) {
+                let x = i/(elevProfile.length-1)*(elevCanvas.width-20)+10;
+                let y = elevCanvas.height-10-((elevProfile[i]-min)/(max-min+0.01))*(elevCanvas.height-20);
+                if (i===0) elevCtx.moveTo(x,y); else elevCtx.lineTo(x,y);
+            }
+            elevCtx.strokeStyle="#00ffe7"; elevCtx.lineWidth=3; elevCtx.shadowColor="#00ffe7"; elevCtx.shadowBlur=6; elevCtx.stroke(); elevCtx.shadowBlur = 0;
+        }
+
+        // --- Motion Permission ---
+        document.getElementById('requestMotionBtn').onclick = function() {
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                DeviceMotionEvent.requestPermission().then(response => {
+                    if (response === 'granted') {
+                        window.addEventListener('devicemotion', handleMotion);
+                        window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+                        window.addEventListener('deviceorientation', handleOrientation, true);
+                        document.getElementById('startBtn').disabled = false;
+                        showCalibModal();
+                    } else {
+                        alert("Motion and Orientation access denied. Some features will be limited.");
+                    }
+                }).catch(e => {
+                    alert("Error requesting motion permission: " + e.message);
+                    console.error("DeviceMotion.requestPermission error:", e);
+                });
+            } else {
+                // For browsers that don't need explicit permission (e.g., Firefox, older Chrome)
+                window.addEventListener('devicemotion', handleMotion);
+                window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+                window.addEventListener('deviceorientation', handleOrientation, true);
+                document.getElementById('startBtn').disabled = false;
+                showCalibModal();
+            }
+        };
+
+        function handleMotion(event) {
+            // Accelerometer
+            const acc = event.acceleration && event.acceleration.x !== null ? event.acceleration : event.accelerationIncludingGravity;
+            if (acc) {
+                lastAccel = {x: acc.x || 0, y: acc.y || 0, z: acc.z || 0};
+                let filtered = calibrateAndFilter(lastAccel);
+                // Rolling window for stop detection (sensor fusion)
+                let totalAcc = Math.sqrt(filtered.x*filtered.x + filtered.y*filtered.y + filtered.z*filtered.z);
+                accelWindow.push(totalAcc);
+                if (accelWindow.length > ACCEL_WINDOW_SIZE) accelWindow.shift();
+                let meanAcc = accelWindow.reduce((a,b)=>a+b,0)/accelWindow.length;
+                isDeviceMoving = meanAcc > accelerationThreshold;
+                allowGPS = isDeviceMoving; // Only request GPS updates if device is moving
+                lastAccelForTrail = filtered;
+                updateAccelDataDisplay();
+                if (totalAcc > ACCEL_MOVEMENT_THRESHOLD) {
+                    const SCALE = 8;
+                    let newPoint = {
+                        x: prevAccelPoint.x + filtered.x * SCALE,
+                        y: prevAccelPoint.y - filtered.y * SCALE
+                    };
+                    newPoint.x = Math.max(0, Math.min(canvas.width, newPoint.x));
+                    newPoint.y = Math.max(0, Math.min(canvas.height, newPoint.y));
+                    accelTrail.push(newPoint);
+                    let dx = newPoint.x - prevAccelPoint.x;
+                    let dy = newPoint.y - prevAccelPoint.y;
+                    let segmentDist = Math.sqrt(dx*dx + dy*dy) * 0.2; // Arbitrary scale for visual distance
+                    accelDistance += segmentDist;
+                    prevAccelPoint = newPoint;
+                    if (accelTrail.length > 200) accelTrail.shift();
+                    drawAccelTrail();
+                    updateAccelDistanceDisplay();
+                }
+            }
+            // Gyroscope
+            if (event.rotationRate) {
+                lastGyro = {x: event.rotationRate.alpha || 0, y: event.rotationRate.beta || 0, z: event.rotationRate.gamma || 0};
+                document.getElementById('gyroData').textContent = `x:${lastGyro.x.toFixed(2)}, y:${lastGyro.y.toFixed(2)}, z:${lastGyro.z.toFixed(2)}`;
+            }
+        }
+
+        // --- GPS Smoothing and Filtering ---
+        let gpsBuffer = [];
+        function smoothGPS(lat, lng) {
+            gpsBuffer.push([lat, lng]);
+            if (gpsBuffer.length > GPS_AVG_WINDOW) gpsBuffer.shift();
+            let sumLat = 0, sumLng = 0, weight = 1, totalWeight = 0;
+            for (let i = gpsBuffer.length-1; i >= 0; i--) {
+                sumLat += gpsBuffer[i][0] * weight;
+                sumLng += gpsBuffer[i][1] * weight;
+                totalWeight += weight;
+                weight *= GPS_SMOOTH_ALPHA;
+            }
+            return [sumLat/totalWeight, sumLng/totalWeight];
+        }
+
+        // --- WEATHER (wttr.in, no API key, CORS workaround via JSONP) ---
+        const weatherInfo = document.getElementById('weatherInfo');
+        function fetchWeatherByCoords(lat, lon) {
+            // Using allorigins.win as a CORS proxy. Note: This service can be unreliable.
+            const url = `https://wttr.in/${lat},${lon}?format=%t+%C+%h`;
+            fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.contents) {
+                        weatherInfo.innerHTML = "Weather unavailable.";
+                        return;
+                    }
+                    weatherInfo.innerHTML = data.contents.replace(/\+/g,'') || "Weather unavailable.";
+                })
+                .catch(() => { weatherInfo.innerHTML = "Weather unavailable."; });
+        }
+
+        // --- GPS Tracking ---
+        document.getElementById('startBtn').onclick = function() {
+            if (navigator.geolocation) {
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+
+                // Reset all tracking metrics
+                totalDistance = 0;
+                document.getElementById('distance').textContent = 'GPS Distance: 0.00 ft';
+                lastLatLng = null;
+                trailCoordinates = [];
+                elevProfile = [];
+                waypoints = [];
+                gpsBuffer = [];
+
+                // Reset speed metrics
+                lastTimestamp = null;
+                lastKnownSpeed = 0;
+                maxSpeed = 0;
+                totalSpeedSum = 0;
+                speedReadingsCount = 0;
+                document.getElementById('speed').textContent = 'Speed: 0.00 MPH';
+                document.getElementById('avgSpeed').textContent = 'Avg Speed: 0.00 MPH';
+                document.getElementById('maxSpeed').textContent = 'Max Speed: 0.00 MPH';
+                document.getElementById('cog').textContent = 'COG: --';
+
+                // Reset elevation metrics
+                lastElevation = null;
+                lastElevationTimestamp = null;
+                document.getElementById('verticalSpeed').textContent = 'Vertical Speed: --';
+
+
+                // Start timer
+                startTime = new Date().getTime();
+                totalTrackingTimeSeconds = 0;
+                timerInterval = setInterval(updateTimer, 1000);
+                updateTimer(); // Initial call to display 00:00:00 immediately
+
+                // Clear map overlays
+                if (trailLine) { map.removeLayer(trailLine); trailLine = null; }
+                if (marker) { map.removeLayer(marker); marker = null; }
+                map.eachLayer(function(layer){ if(layer instanceof L.Marker && !layer._icon) map.removeLayer(layer); }); // Clear custom waypoints
+
+                watchId = navigator.geolocation.watchPosition(updateLocation, handleError, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                });
+            } else {
+                alert("Geolocation is not supported by your browser.");
+            }
+        };
+
+        document.getElementById('stopBtn').onclick = function() {
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+                clearInterval(timerInterval); // Stop timer
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+                alert('Tracking stopped.');
+            }
+        };
+
+        document.getElementById('resetBtn').onclick = function() {
+            if (watchId !== null) { // If tracking is active, stop it first
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            clearInterval(timerInterval); // Stop timer (if active)
+
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+
+            // Reset all values
+            totalDistance = 0;
+            lastLatLng = null;
+            trailCoordinates = [];
+            elevProfile = [];
+            waypoints = [];
+            gpsBuffer = [];
+            startTime = null;
+            totalTrackingTimeSeconds = 0;
+            lastTimestamp = null;
+            lastKnownSpeed = 0;
+            maxSpeed = 0;
+            totalSpeedSum = 0;
+            speedReadingsCount = 0;
+            lastElevation = null;
+            lastElevationTimestamp = null;
+
+            // Update displays
+            document.getElementById('distance').textContent = 'GPS Distance: 0.00 ft';
+            document.getElementById('coords').textContent = 'Coordinates: N/A';
+            document.getElementById('accuracy').textContent = 'Accuracy: --';
+            document.getElementById('gpsAltitude').textContent = '--';
+            document.getElementById('speed').textContent = 'Speed: 0.00 MPH';
+            document.getElementById('avgSpeed').textContent = 'Avg Speed: 0.00 MPH';
+            document.getElementById('maxSpeed').textContent = 'Max Speed: 0.00 MPH';
+            document.getElementById('timer').textContent = 'Tracking Time: 00:00:00';
+            document.getElementById('cog').textContent = 'COG: --';
+            document.getElementById('verticalSpeed').textContent = 'Vertical Speed: --';
+
+            // Clear map overlays
+            if (trailLine) { map.removeLayer(trailLine); trailLine = null; }
+            if (marker) { map.removeLayer(marker); marker = null; }
+            map.eachLayer(function(layer){ if(layer instanceof L.Marker && !layer._icon) map.removeLayer(layer); }); // Clear custom waypoints
+
+            // Reset accelerometer/canvas
+            accelTrail = [ {...CANVAS_CENTER} ];
+            accelDistance = 0;
+            prevAccelPoint = {...CANVAS_CENTER};
+            drawAccelTrail();
+            updateAccelDistanceDisplay();
+            drawElevationProfile();
+            weatherInfo.innerHTML = "Loading..."; // Re-fetch weather or set to initial state
+        };
+
+        // Helper to format time (HH:MM:SS)
+        function formatTime(ms) {
+            const seconds = Math.floor(ms / 1000);
+            totalTrackingTimeSeconds = seconds; // Update for avg speed
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = seconds % 60;
+            return [h, m, s]
+                .map(v => v < 10 ? '0' + v : v)
+                .join(':');
+        }
+
+        function updateTimer() {
+            if (startTime) {
+                const elapsed = new Date().getTime() - startTime;
+                document.getElementById('timer').textContent = 'Tracking Time: ' + formatTime(elapsed);
+                // Update average speed here as well, tied to timer updates
+                if (speedReadingsCount > 0) {
+                    document.getElementById('avgSpeed').textContent = 'Avg Speed: ' + (totalSpeedSum / speedReadingsCount).toFixed(2) + ' MPH';
+                }
+            }
+        }
+
+
+        function updateLocation(position) {
+            document.getElementById('accuracy').textContent = 'Accuracy: ' +
+                (position.coords.accuracy ? position.coords.accuracy.toFixed(1) + ' m' : '--');
+            document.getElementById('gpsAltitude').textContent = position.coords.altitude !== null ? position.coords.altitude.toFixed(1) + ' m' : '--';
+
+            // Only proceed if accuracy is good AND device is deemed moving by accelerometer (if enabled)
+            if (position.coords.accuracy > ACCURACY_THRESHOLD) return;
+            // if (!allowGPS) return; // Uncomment to re-enable accelerometer-based GPS gating
+
+            let lat = position.coords.latitude, lng = position.coords.longitude, elev = null;
+            const currentTimestamp = position.timestamp; // Get timestamp from position object
+
+            if (position.coords.altitude !== null) elev = position.coords.altitude;
+            [lat, lng] = smoothGPS(lat, lng);
+            const latLng = [lat, lng];
+            document.getElementById('coords').textContent = `Coordinates: Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`;
+            fetchWeatherByCoords(lat, lng); // Update weather on each fix
+
+            let currentSpeedMps = 0;
+            if (lastLatLng) {
+                const distanceMeters = getDistanceFromLatLng(lastLatLng, latLng); // distance in meters
+                const timeDiffSeconds = (currentTimestamp - lastTimestamp) / 1000; // in seconds
+
+                if (distanceMeters < MIN_DISTANCE || distanceMeters > MAX_DISTANCE) {
+                    // Filter out tiny jitters or huge jumps. Don't add to total distance/speed.
+                    // Still update marker and map view to current location though.
+                } else {
+                    totalDistance += distanceMeters * 3.28084; // Convert meters to feet
+                    document.getElementById('distance').textContent = 'GPS Distance: ' + totalDistance.toFixed(2) + ' ft';
+
+                    if (timeDiffSeconds > 0) {
+                        currentSpeedMps = distanceMeters / timeDiffSeconds;
+                        const currentSpeedMph = currentSpeedMps * 2.23694; // Convert m/s to MPH
+                        lastKnownSpeed = currentSpeedMph;
+                        document.getElementById('speed').textContent = 'Speed: ' + lastKnownSpeed.toFixed(2) + ' MPH';
+
+                        // Update Max Speed
+                        if (currentSpeedMph > maxSpeed) {
+                            maxSpeed = currentSpeedMph;
+                            document.getElementById('maxSpeed').textContent = 'Max Speed: ' + maxSpeed.toFixed(2) + ' MPH';
+                        }
+                        // Update Average Speed data
+                        totalSpeedSum += currentSpeedMph;
+                        speedReadingsCount++;
+                    } else {
+                        document.getElementById('speed').textContent = 'Speed: 0.00 MPH';
+                    }
+                }
+            } else {
+                document.getElementById('speed').textContent = 'Speed: 0.00 MPH';
+            }
+
+            // Update COG (Course Over Ground)
+            if (position.coords.heading !== null && !isNaN(position.coords.heading)) {
+                document.getElementById('cog').textContent = `COG: ${position.coords.heading.toFixed(0)}°`;
+            } else {
+                document.getElementById('cog').textContent = 'COG: --';
+            }
+
+
+            trailCoordinates.push(latLng);
+            if (trailLine) trailLine.setLatLngs(trailCoordinates);
+            else trailLine = L.polyline(trailCoordinates, { color: '#00ffe7', weight: 4, opacity: 0.7 }).addTo(map);
+
+            if (marker) marker.setLatLng(latLng);
+            else marker = L.marker(latLng, {icon: alienIcon}).addTo(map); // Use custom alien icon
+
+            if (lockMapToUser) {
+                map.setView(latLng, map.getZoom()); // Keep current zoom
+                // Future: If you can rotate the map, use map.setBearing(position.coords.heading) here
+            } else {
+                map.setView(latLng, 15); // Auto-pan if not locked
+            }
+            lastLatLng = latLng;
+            lastTimestamp = currentTimestamp; // Store current timestamp for next calculation
+
+            if (!baroAvailable && elev !== null) { // Only use GPS alt if barometer is not available
+                elevProfile.push(elev);
+                drawElevationProfile();
+            } else if (baroAvailable && baroAlt !== null) {
+                 // Already handled by barometer update listener
+            }
+        }
+
+        function getDistanceFromLatLng(l1, l2) {
+            const R = 6371000, toRad = v => (v * Math.PI) / 180;
+            const lat1 = l1[0], lon1 = l1[1], lat2 = l2[0], lon2 = l2[1];
+            const dLat = toRad(lat2 - lat1), dLon = toRad(l2[1] - l1[1]);
+            const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c; // Distance in meters
+        }
+
+        function handleError(error) {
+            switch(error.code) {
+                case error.PERMISSION_DENIED: alert('Location permission denied. Please allow location access for tracking.'); break;
+                case error.POSITION_UNAVAILABLE: alert('Location information is unavailable. Try moving to an open area.'); break;
+                case error.TIMEOUT: alert('Location request timed out. Ensure GPS is enabled.'); break;
+                default: alert('An unknown geolocation error occurred.');
+            }
+            // If an error occurs, ensure buttons are reset
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            clearInterval(timerInterval);
+        }
+
+        // --- GPX Export ---
+        document.getElementById('exportBtn').onclick = function() {
+            if (!trailCoordinates.length) return alert("No track to export.");
+            // Basic GPX export for track points and waypoints
+            // Does NOT include time, speed, or elevation per point as that requires more complex GPX schema
+            let gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Alien Tech GPX Tracker" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+<trk><name>Track</name><trkseg>
+${trailCoordinates.map(([lat,lng])=>`<trkpt lat="${lat}" lon="${lng}"></trkpt>`).join('\n')}
+</trkseg></trk>
+${waypoints.map(wpt=>`<wpt lat="${wpt.lat}" lon="${wpt.lng}"><name>${wpt.name||'Waypoint'}</name></wpt>`).join('\n')}
+</gpx>`;
+            let blob = new Blob([gpx], {type:'application/gpx+xml'});
+            let url = URL.createObjectURL(blob);
+            let a = document.createElement('a');
+            a.href = url; a.download = 'track.gpx'; a.click();
+            URL.revokeObjectURL(url);
+        };
+
+        // --- Add Waypoint ---
+        document.getElementById('addWptBtn').onclick = function() {
+            if (!lastLatLng) return alert("No GPS fix yet. Move to get a location.");
+            let name = prompt("Waypoint name?", "Waypoint " + (waypoints.length+1));
+            // Ensure lastLatLng is a copy if it's an array to avoid mutation issues
+            waypoints.push({lat: lastLatLng[0], lng: lastLatLng[1], name: name});
+            let wptMarker = L.marker(lastLatLng, {icon: L.icon({
+                iconUrl:'https://cdn-icons-png.flaticon.com/512/684/684908.png', // Default pushpin icon
+                iconSize:[24,24]
+            })}).addTo(map).bindPopup(name||'Waypoint');
+        };
+
+        // --- Map Style Switch ---
+        document.getElementById('mapStyle').onchange = function() {
+            let style = this.value;
+            Object.values(mapLayers).forEach(l=>map.removeLayer(l));
+            mapLayers[style].addTo(map);
+        };
+
+        // --- Map Lock to User Toggle ---
+        document.getElementById('lockMapBtn').onclick = function() {
+            lockMapToUser = !lockMapToUser;
+            this.classList.toggle('active', lockMapToUser);
+            if (lockMapToUser && lastLatLng) {
+                map.setView(lastLatLng, map.getZoom()); // Center immediately
+            }
+        };
+
+
+        // --- Map Init ---
+        function initMap() {
+            map = L.map('map').setView([0, 0], 2); // Default to world view
+            mapLayers.osm.addTo(map);
+
+            // Try to get current location on initial load for better UX
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const initialLatLng = [pos.coords.latitude, pos.coords.longitude];
+                    map.setView(initialLatLng, 15);
+                    L.marker(initialLatLng, {icon: alienIcon}).addTo(map)
+                        .bindPopup("Your current location").openPopup();
+                    fetchWeatherByCoords(pos.coords.latitude, pos.coords.longitude);
+                },
+                (err) => {
+                    console.warn(`Initial location access denied or unavailable: ${err.message}`);
+                    // Map stays at default 0,0, zoom 2
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
+            );
+        }
+
+        // --- Initialize on Window Load ---
+        window.onload = function() {
+            initMap();
+            drawCompass();
+            drawAccelTrail();
+            updateAccelDistanceDisplay();
+            updateAccelDataDisplay();
+            drawElevationProfile();
+            setupBarometer();
+            setupBatteryStatus(); // Initialize battery status
+            // Initialize speed and timer display
+            document.getElementById('speed').textContent = 'Speed: 0.00 MPH';
+            document.getElementById('avgSpeed').textContent = 'Avg Speed: 0.00 MPH';
+            document.getElementById('maxSpeed').textContent = 'Max Speed: 0.00 MPH';
+            document.getElementById('cog').textContent = 'COG: --';
+            document.getElementById('timer').textContent = 'Tracking Time: 00:00:00';
+            document.getElementById('verticalSpeed').textContent = 'Vertical Speed: --';
+            document.getElementById('gpsAltitude').textContent = '--';
+        };
+    </script>
+</body>
+</html>
