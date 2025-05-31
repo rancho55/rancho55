@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gold Mine Slot Machine</title>
+  <!-- Use a bold, rustic font -->
+  <link href="https://fonts.googleapis.com/css2?family=Staatliches&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      margin: 0;
+      background: linear-gradient(135deg, #4b3b00 0%, #a67c00 100%);
+      font-family: 'Staatliches', cursive, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #fff3b0;
+      user-select: none;
+    }
+    .slot-machine {
+      background: #3e2f00;
+      border-radius: 25px;
+      padding: 40px 30px 30px;
+      box-shadow:
+        0 0 50px #ffd700,
+        inset 0 0 60px #b8860b;
+      width: 440px;
+      text-align: center;
+      position: relative;
+      border: 6px solid #d4af37;
+    }
+    .slot-title {
+      font-size: 2.8rem;
+      letter-spacing: 4px;
+      margin-bottom: 20px;
+      color: #ffd700;
+      text-shadow:
+        0 0 10px #b8860b,
+        0 0 20px #fffacd;
+      font-family: 'Staatliches', cursive, sans-serif;
+    }
+    .goldmine-icons {
+      position: absolute;
+      top: -45px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 2.8rem;
+      color: #ffd700;
+      text-shadow: 0 0 15px #b8860b;
+    }
+    .info {
+      margin-bottom: 14px;
+      font-size: 1.2rem;
+      color: #fff3b0;
+      text-shadow: 0 0 6px #b8860b;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    button {
+      background: linear-gradient(90deg, #ffd700 0%, #b8860b 100%);
+      border: none;
+      padding: 14px 35px;
+      border-radius: 25px;
+      font-family: 'Staatliches', cursive, sans-serif;
+      font-weight: 700;
+      font-size: 1.2rem;
+      color: #3e2f00;
+      cursor: pointer;
+      box-shadow: 0 0 20px #ffd700;
+      transition: background 0.3s ease;
+      user-select: none;
+    }
+    button:hover {
+      background: linear-gradient(90deg, #b8860b 0%, #ffd700 100%);
+      box-shadow: 0 0 35px #fffacd;
+    }
+    .reels {
+      display: grid;
+      grid-template-columns: repeat(3, 90px);
+      grid-template-rows: repeat(3, 90px);
+      gap: 18px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .reel {
+      background: #fff8dc;
+      border: 5px solid #d4af37;
+      border-radius: 20px;
+      width: 90px;
+      height: 90px;
+      font-size: 3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow:
+        0 0 15px #ffd700,
+        inset 0 0 20px #b8860b;
+      transition: background 0.2s;
+      user-select: none;
+      color: #b8860b;
+      text-shadow: 1px 1px 2px #7f6000;
+    }
+    .result-message {
+      font-size: 1.4rem;
+      min-height: 32px;
+      color: #fffacd;
+      text-shadow: 0 0 10px #b8860b;
+      font-weight: 700;
+      font-family: 'Staatliches', cursive, sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div class="slot-machine" role="main" aria-label="Gold Mine Slot Machine">
+    <div class="goldmine-icons">⛏️💰🪙</div>
+    <div class="slot-title">GOLD MINE SLOTS</div>
+    <div class="info" aria-live="polite">
+      Coins: <span id="coins">1111</span> | Bet: <span id="bet">10</span>
+    </div>
+    <div class="controls">
+      <button id="betBtn" aria-label="Change Bet Amount">Change Bet</button>
+      <button id="spinBtn" aria-label="Spin the slot machine">SPIN</button>
+    </div>
+    <div class="reels" id="reels" aria-live="polite" aria-atomic="true">
+      <!-- 3x3 grid reels -->
+    </div>
+    <div class="result-message" id="resultMessage" aria-live="polite" aria-atomic="true"></div>
+  </div>
+
+  <script>
+    // Gold Mine themed symbols
+    const symbols = ["⛏️", "💰", "🪙", "🏔️", "🛤️", "💎", "🔥"];
+    const betOptions = [10, 25, 50, 100];
+    let betIndex = 0;
+    let bet = betOptions[betIndex];
+    let coins = 1111;
+
+    const reelsContainer = document.getElementById('reels');
+    const coinsEl = document.getElementById('coins');
+    const betEl = document.getElementById('bet');
+    const resultMessage = document.getElementById('resultMessage');
+    const spinBtn = document.getElementById('spinBtn');
+    const betBtn = document.getElementById('betBtn');
+
+    let reelEls = [];
+
+    function createGrid() {
+      reelsContainer.innerHTML = '';
+      reelEls = [];
+      for (let i = 0; i < 9; i++) {
+        const div = document.createElement('div');
+        div.className = 'reel';
+        div.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+        reelsContainer.appendChild(div);
+        reelEls.push(div);
+      }
+    }
+    createGrid();
+
+    function updateInfo() {
+      coinsEl.textContent = coins;
+      betEl.textContent = bet;
+    }
+
+    function spinReels() {
+      if (coins < bet) {
+        resultMessage.textContent = "Not enough coins to mine gold!";
+        return;
+      }
+      coins -= bet;
+      updateInfo();
+      let results = [];
+      for (let i = 0; i < 9; i++) {
+        const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+        reelEls[i].textContent = symbol;
+        results.push(symbol);
+      }
+      checkWin(results);
+    }
+
+    function checkWin(results) {
+      // Check all rows, columns, diagonals for 3 of a kind
+      const lines = [
+        [0,1,2], [3,4,5], [6,7,8], // rows
+        [0,3,6], [1,4,7], [2,5,8], // columns
+        [0,4,8], [2,4,6]           // diagonals
+      ];
+      let win = false;
+      let bigWin = false;
+      let winLines = 0;
+      let winSymbol = '';
+      lines.forEach(line => {
+        if (
+          results[line[0]] === results[line[1]] &&
+          results[line[1]] === results[line[2]]
+        ) {
+          win = true;
+          winLines++;
+          winSymbol = results[line[0]];
+          if (winSymbol === "💰" || winSymbol === "💎") bigWin = true;
+        }
+      });
+
+      if (win) {
+        let payout = bet * 2 * winLines;
+        if (bigWin) payout = bet * 5 * winLines;
+        coins += payout;
+        updateInfo();
+        resultMessage.textContent = bigWin
+          ? `💰 JACKPOT! ${winLines} line(s) of ${winSymbol}! You win ${payout} coins! 🪙`
+          : `Nice! ${winLines} line(s) matched. You win ${payout} coins! ⛏️`;
+      } else {
+        resultMessage.textContent = "No gold this spin, keep digging!";
+      }
+    }
+
+    spinBtn.addEventListener('click', () => {
+      resultMessage.textContent = "";
+      spinReels();
+    });
+
+    betBtn.addEventListener('click', () => {
+      betIndex = (betIndex + 1) % betOptions.length;
+      bet = betOptions[betIndex];
+      updateInfo();
+    });
+
+    updateInfo();
+  </script>
+</body>
+</html>

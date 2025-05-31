@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Miami Slot Machine</title>
+  <style>
+    body {
+      background: linear-gradient(135deg, #ffb347 0%, #ffcc33 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: 'Arial Black', Arial, sans-serif;
+    }
+    .slot-machine {
+      background: #222;
+      border-radius: 30px;
+      box-shadow: 0 0 40px #ff69b4, 0 0 20px #00e6e6;
+      padding: 40px 30px 30px 30px;
+      text-align: center;
+      position: relative;
+    }
+    .slot-title {
+      color: #00e6e6;
+      font-size: 2.5rem;
+      letter-spacing: 2px;
+      margin-bottom: 20px;
+      text-shadow: 0 0 8px #ff69b4;
+    }
+    .reels {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-bottom: 20px;
+    }
+    .reel {
+      background: #fff;
+      border: 4px solid #ff69b4;
+      border-radius: 15px;
+      width: 80px;
+      height: 80px;
+      font-size: 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 8px #00e6e6;
+    }
+    .spin-btn {
+      background: linear-gradient(90deg, #ff69b4 0%, #00e6e6 100%);
+      border: none;
+      color: #fff;
+      font-size: 1.3rem;
+      font-weight: bold;
+      padding: 12px 35px;
+      border-radius: 20px;
+      cursor: pointer;
+      box-shadow: 0 4px 18px #ff69b4;
+      margin-bottom: 15px;
+      transition: background 0.2s;
+    }
+    .spin-btn:hover {
+      background: linear-gradient(90deg, #00e6e6 0%, #ff69b4 100%);
+    }
+    .result-message {
+      color: #fff;
+      font-size: 1.2rem;
+      margin-top: 10px;
+      min-height: 24px;
+      text-shadow: 0 0 6px #00e6e6;
+    }
+    .miami-icons {
+      position: absolute;
+      top: -40px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 2.2rem;
+      color: #ff69b4;
+      text-shadow: 0 0 10px #00e6e6;
+    }
+  </style>
+</head>
+<body>
+  <div class="slot-machine">
+    <div class="miami-icons">🌴🌴🌴</div>
+    <div class="slot-title">MIAMI SLOTS</div>
+    <div class="reels">
+      <div class="reel" id="reel1">🌴</div>
+      <div class="reel" id="reel2">🚗</div>
+      <div class="reel" id="reel3">🦩</div>
+    </div>
+    <button class="spin-btn" id="spinBtn">SPIN</button>
+    <div class="result-message" id="resultMessage"></div>
+  </div>
+  <script>
+    const symbols = ["🌴", "🚗", "🦩", "7️⃣", "🍹", "🌅", "💎"];
+    const reelEls = [
+      document.getElementById('reel1'),
+      document.getElementById('reel2'),
+      document.getElementById('reel3')
+    ];
+    const resultMessage = document.getElementById('resultMessage');
+    const spinBtn = document.getElementById('spinBtn');
+    
+    function spinReels() {
+      let results = [];
+      for (let i = 0; i < 3; i++) {
+        const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+        reelEls[i].textContent = symbol;
+        results.push(symbol);
+      }
+      checkWin(results);
+    }
+    
+    function checkWin(results) {
+      if (results[0] === results[1] && results[1] === results[2]) {
+        resultMessage.textContent = "JACKPOT! Miami Style! 🎉";
+      } else if (results[0] === results[1] || results[1] === results[2] || results[0] === results[2]) {
+        resultMessage.textContent = "Nice! Two of a kind!";
+      } else {
+        resultMessage.textContent = "Try again for that Miami win!";
+      }
+    }
+    
+    spinBtn.addEventListener('click', () => {
+      resultMessage.textContent = "";
+      spinReels();
+    });
+  </script>
+</body>
+</html>

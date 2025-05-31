@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cowboy Slot Machine</title>
+  <!-- Western-style font -->
+  <link href="https://fonts.googleapis.com/css2?family=Special+Elite&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      margin: 0;
+      background: linear-gradient(135deg, #6b4c3b 0%, #3e2f22 100%);
+      font-family: 'Special Elite', Courier, monospace;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #f5deb3;
+      user-select: none;
+    }
+    .slot-machine {
+      background: #4b3621;
+      border-radius: 25px;
+      padding: 40px 30px 30px;
+      box-shadow:
+        0 0 30px #d2b48c,
+        inset 0 0 40px #a67c52;
+      width: 420px;
+      text-align: center;
+      position: relative;
+      border: 6px solid #a67c52;
+    }
+    .slot-title {
+      font-size: 2.8rem;
+      letter-spacing: 3px;
+      margin-bottom: 20px;
+      color: #f5deb3;
+      text-shadow:
+        1px 1px 2px #3e2f22,
+        0 0 8px #d2b48c;
+      font-family: 'Special Elite', Courier, monospace;
+    }
+    .cowboy-icons {
+      position: absolute;
+      top: -45px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 2.4rem;
+      color: #deb887;
+      text-shadow: 0 0 10px #3e2f22;
+    }
+    .info {
+      margin-bottom: 12px;
+      font-size: 1.1rem;
+      color: #f5deb3;
+      text-shadow: 0 0 6px #3e2f22;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+    button {
+      background: linear-gradient(90deg, #deb887 0%, #a67c52 100%);
+      border: none;
+      padding: 12px 30px;
+      border-radius: 20px;
+      font-family: 'Special Elite', Courier, monospace;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: #3e2f22;
+      cursor: pointer;
+      box-shadow: 0 0 15px #deb887;
+      transition: background 0.3s ease;
+      user-select: none;
+    }
+    button:hover {
+      background: linear-gradient(90deg, #a67c52 0%, #deb887 100%);
+      box-shadow: 0 0 25px #f5deb3;
+    }
+    .reels {
+      display: grid;
+      grid-template-columns: repeat(3, 80px);
+      grid-template-rows: repeat(3, 80px);
+      gap: 15px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .reel {
+      background: #f5deb3;
+      border: 4px solid #a67c52;
+      border-radius: 15px;
+      width: 80px;
+      height: 80px;
+      font-size: 2.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow:
+        0 0 10px #a67c52,
+        inset 0 0 15px #deb887;
+      transition: background 0.2s;
+      user-select: none;
+      color: #6b4c3b;
+      text-shadow: 1px 1px 1px #3e2f22;
+    }
+    .result-message {
+      font-size: 1.3rem;
+      min-height: 28px;
+      color: #deb887;
+      text-shadow: 0 0 8px #3e2f22;
+      font-weight: 700;
+      font-family: 'Special Elite', Courier, monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="slot-machine" role="main" aria-label="Cowboy Slot Machine">
+    <div class="cowboy-icons">🤠🐎🔫</div>
+    <div class="slot-title">COWBOY SLOTS</div>
+    <div class="info" aria-live="polite">
+      Coins: <span id="coins">1111</span> | Bet: <span id="bet">10</span>
+    </div>
+    <div class="controls">
+      <button id="betBtn" aria-label="Change Bet Amount">Change Bet</button>
+      <button id="spinBtn" aria-label="Spin the slot machine">SPIN</button>
+    </div>
+    <div class="reels" id="reels" aria-live="polite" aria-atomic="true">
+      <!-- 3x3 grid reels -->
+    </div>
+    <div class="result-message" id="resultMessage" aria-live="polite" aria-atomic="true"></div>
+  </div>
+
+  <script>
+    // Cowboy / Western themed symbols
+    const symbols = ["🤠", "🐎", "🔫", "⚰️", "🎩", "💰", "🌵"];
+    const betOptions = [10, 25, 50, 100];
+    let betIndex = 0;
+    let bet = betOptions[betIndex];
+    let coins = 1111;
+
+    const reelsContainer = document.getElementById('reels');
+    const coinsEl = document.getElementById('coins');
+    const betEl = document.getElementById('bet');
+    const resultMessage = document.getElementById('resultMessage');
+    const spinBtn = document.getElementById('spinBtn');
+    const betBtn = document.getElementById('betBtn');
+
+    let reelEls = [];
+
+    function createGrid() {
+      reelsContainer.innerHTML = '';
+      reelEls = [];
+      for (let i = 0; i < 9; i++) {
+        const div = document.createElement('div');
+        div.className = 'reel';
+        div.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+        reelsContainer.appendChild(div);
+        reelEls.push(div);
+      }
+    }
+    createGrid();
+
+    function updateInfo() {
+      coinsEl.textContent = coins;
+      betEl.textContent = bet;
+    }
+
+    function spinReels() {
+      if (coins < bet) {
+        resultMessage.textContent = "Not enough coins in the saloon!";
+        return;
+      }
+      coins -= bet;
+      updateInfo();
+      let results = [];
+      for (let i = 0; i < 9; i++) {
+        const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+        reelEls[i].textContent = symbol;
+        results.push(symbol);
+      }
+      checkWin(results);
+    }
+
+    function checkWin(results) {
+      // Check all rows, columns, diagonals for 3 of a kind
+      const lines = [
+        [0,1,2], [3,4,5], [6,7,8], // rows
+        [0,3,6], [1,4,7], [2,5,8], // columns
+        [0,4,8], [2,4,6]           // diagonals
+      ];
+      let win = false;
+      let bigWin = false;
+      let winLines = 0;
+      let winSymbol = '';
+      lines.forEach(line => {
+        if (
+          results[line[0]] === results[line[1]] &&
+          results[line[1]] === results[line[2]]
+        ) {
+          win = true;
+          winLines++;
+          winSymbol = results[line[0]];
+          if (winSymbol === "🤠" || winSymbol === "💰") bigWin = true;
+        }
+      });
+
+      if (win) {
+        let payout = bet * 2 * winLines;
+        if (bigWin) payout = bet * 5 * winLines;
+        coins += payout;
+        updateInfo();
+        resultMessage.textContent = bigWin
+          ? `Yeehaw! JACKPOT! ${winLines} line(s) of ${winSymbol}! You win ${payout} coins! 🤠💰`
+          : `Howdy! ${winLines} line(s) matched. You win ${payout} coins!`;
+      } else {
+        resultMessage.textContent = "No luck on the trail this time!";
+      }
+    }
+
+    spinBtn.addEventListener('click', () => {
+      resultMessage.textContent = "";
+      spinReels();
+    });
+
+    betBtn.addEventListener('click', () => {
+      betIndex = (betIndex + 1) % betOptions.length;
+      bet = betOptions[betIndex];
+      updateInfo();
+    });
+
+    updateInfo();
+  </script>
+</body>
+</html>

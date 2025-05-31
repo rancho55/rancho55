@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Japanese Slot Machine</title>
+  <!-- Google Font for Japanese style -->
+  <link href="https://fonts.googleapis.com/css2?family=Kanit&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      margin: 0;
+      background: linear-gradient(135deg, #d32f2f, #fff);
+      font-family: 'Kanit', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #fff;
+      user-select: none;
+      transition: background 0.2s ease;
+    }
+    .slot-machine {
+      background: #222;
+      border-radius: 25px;
+      padding: 40px 30px 30px;
+      box-shadow:
+        0 0 30px #ffd700,
+        inset 0 0 40px #444;
+      width: 440px;
+      text-align: center;
+      position: relative;
+      border: 6px solid #ffd700;
+    }
+    .slot-title {
+      font-size: 2.8rem;
+      letter-spacing: 3px;
+      margin-bottom: 20px;
+      color: #ffd700;
+      text-shadow: 1px 1px 2px #000;
+    }
+    .japan-icons {
+      position: absolute;
+      top: -45px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 2.4rem;
+      color: #ffd700;
+      text-shadow: 0 0 10px #000;
+    }
+    .info {
+      margin-bottom: 12px;
+      font-size: 1.2rem;
+      color: #fff;
+      text-shadow: 1px 1px 2px #000;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+    button {
+      background: linear-gradient(90deg, #ffd700, #b8860b);
+      border: none;
+      padding: 12px 30px;
+      border-radius: 20px;
+      font-family: 'Kanit', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: #222;
+      cursor: pointer;
+      box-shadow: 0 0 15px #ffd700;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: linear-gradient(90deg, #b8860b, #ffd700);
+      box-shadow: 0 0 25px #f5deb3;
+    }
+    #diceResult {
+      margin-top: 10px;
+      font-size: 1.2rem;
+      height: 24px;
+      color: #ffd700;
+      text-shadow: 0 0 6px #000;
+    }
+    .reels {
+      display: grid;
+      grid-template-columns: repeat(3, 80px);
+      grid-template-rows: repeat(3, 80px);
+      gap: 15px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .reel {
+      background: #fff;
+      border: 4px solid #ffd700;
+      border-radius: 15px;
+      width: 80px;
+      height: 80px;
+      font-size: 2.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow:
+        0 0 10px #ffd700,
+        inset 0 0 15px #444;
+      transition: background 0.2s;
+      user-select: none;
+      color: #222;
+      text-shadow: 1px 1px 1px #000;
+    }
+    .result-message {
+      font-size: 1.3rem;
+      min-height: 28px;
+      color: #ffd700;
+      text-shadow: 1px 1px 2px #000;
+      font-weight: 700;
+      font-family: 'Kanit', sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div class="slot-machine" role="main" aria-label="Japanese Slot Machine">
+    <div class="japan-icons">🎋🗻🪣</div>
+    <div class="slot-title">JAPANESE SLOTS</div>
+    <div class="info" aria-live="polite">
+      Coins: <span id="coins">1111</span> | Bet: <span id="bet">10</span>
+    </div>
+    <div class="controls">
+      <button id="betBtn" aria-label="Change Bet Amount">Change Bet</button>
+      <button id="spinBtn" aria-label="Spin the slot machine">SPIN</button>
+      <button id="diceBtn" aria-label="Roll the dice">Roll Dice</button>
+    </div>
+    <!-- Display dice roll result -->
+    <div id="diceResult"></div>
+    <div class="reels" id="reels" aria-live="polite" aria-atomic="true"></div>
+    <div class="result-message" id="resultMessage" aria-live="polite" aria-atomic="true"></div>
+  </div>
+
+  <script>
+    // Symbols with Japanese theme
+    const symbols = ["🎋", "🗻", "🪣", "🎎", "🎏", "🦊", "🦀"];
+    const betOptions = [10, 25, 50, 100];
+    let betIndex = 0;
+    let bet = betOptions[betIndex];
+    let coins = 1111;
+
+    const reelsContainer = document.getElementById('reels');
+    const coinsEl = document.getElementById('coins');
+    const betEl = document.getElementById('bet');
+    const resultMessage = document.getElementById('resultMessage');
+    const spinBtn = document.getElementById('spinBtn');
+    const betBtn = document.getElementById('betBtn');
+    const diceBtn = document.getElementById('diceBtn');
+    const diceResultEl = document.getElementById('diceResult');
+
+    let reelEls = [];
+
+    function createGrid() {
+      reelsContainer.innerHTML = '';
+      reelEls = [];
+      for (let i = 0; i < 9; i++) {
+        const div = document.createElement('div');
+        div.className = 'reel';
+        div.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+        reelsContainer.appendChild(div);
+        reelEls.push(div);
+      }
+    }
+    createGrid();
+
+    function updateInfo() {
+      coinsEl.textContent = coins;
+      betEl.textContent = bet;
+    }
+
+    function spinReels() {
+      if (coins < bet) {
+        resultMessage.textContent = "Not enough coins!";
+        return;
+      }
+      coins -= bet;
+      updateInfo();
+
+      let results = [];
+      for (let i = 0; i < 9; i++) {
+        const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+        reelEls[i].textContent = symbol;
+        results.push(symbol);
+      }
+      checkWin(results);
+    }
+
+    function checkWin(results) {
+      const lines = [
+        [0,1,2], [3,4,5], [6,7,8],
+        [0,3,6], [1,4,7], [2,5,8],
+        [0,4,8], [2,4,6]
+      ];
+      let win = false;
+      let bigWin = false;
+      let winLines = 0;
+      let winSymbol = '';
+
+      lines.forEach(line => {
+        if (
+          results[line[0]] === results[line[1]] &&
+          results[line[1]] === results[line[2]]
+        ) {
+          win = true;
+          winLines++;
+          winSymbol = results[line[0]];
+          if (winSymbol === "🎋" || winSymbol === "🎎") bigWin = true;
+        }
+      });
+
+      if (win) {
+        let payout = bet * 2 * winLines;
+        if (bigWin) payout = bet * 5 * winLines;
+        coins += payout;
+        updateInfo();
+        resultMessage.textContent = bigWin
+          ? `Yatta! Jackpot! ${winLines} line(s) of ${winSymbol}! You win ${payout} coins! 🎎🎏`
+          : `Nice! ${winLines} line(s) matched. You win ${payout} coins!`;
+      } else {
+        resultMessage.textContent = "No luck this time!";
+      }
+    }
+
+    // Change bet
+    document.getElementById('betBtn').addEventListener('click', () => {
+      betIndex = (betIndex + 1) % betOptions.length;
+      bet = betOptions[betIndex];
+      updateInfo();
+    });
+
+    document.getElementById('spinBtn').addEventListener('click', () => {
+      resultMessage.textContent = "";
+      spinReels();
+    });
+
+    // Flash background for visual feedback
+    function flashFeedback() {
+      const originalColor = document.body.style.background;
+      document.body.style.background = "#ffd700"; // gold color
+      setTimeout(() => {
+        document.body.style.background = originalColor;
+      }, 300);
+    }
+
+    // Roll dice with vibration and visual feedback
+    function rollDice() {
+      const roll = Math.floor(Math.random() * 6) + 1;
+      diceResultEl.textContent = `Dice rolled: ${roll}`;
+
+      // Vibrate if supported
+      if (navigator.vibrate) {
+        if (roll === 6) {
+          navigator.vibrate([200, 100, 200]);
+        } else {
+          navigator.vibrate(200);
+        }
+      }
+
+      // Visual flash feedback
+      flashFeedback();
+
+      // Effects based on dice roll
+      switch (roll) {
+        case 1:
+          coins += 20;
+          resultMessage.textContent = "Lucky 1! +20 coins!";
+          break;
+        case 2:
+          resultMessage.textContent = "A 2... nothing happen.";
+          break;
+        case 3:
+          resultMessage.textContent = "A 3! Spin again!";
+          break;
+        case 4:
+          coins = Math.max(0, coins - 15);
+          resultMessage.textContent = "Ouch! -15 coins.";
+          break;
+        case 5:
+          coins += 50;
+          resultMessage.textContent = "High roll! +50 coins!";
+          break;
+        case 6:
+          coins += 100;
+          resultMessage.textContent = "Yatta! Jackpot +100 coins!";
+          break;
+      }
+      updateInfo();
+    }
+
+    document.getElementById('diceBtn').addEventListener('click', () => {
+      rollDice();
+    });
+
+    // Initialize display
+    updateInfo();
+  </script>
+</body>
+</html>
