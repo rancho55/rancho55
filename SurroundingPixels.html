@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Color Selector with Surrounding Pixels</title>
+<style>
+  #canvasContainer {
+    position: relative;
+    display: inline-block;
+    border: 1px solid #ccc;
+    margin-top: 10px;
+  }
+  #uploadedImage {
+    max-width: 100%;
+    display: block;
+  }
+  #colorDisplay {
+    margin-top: 10px;
+  }
+  .colorBox {
+    display: inline-block;
+    width: 50px;
+    height: 50px;
+    vertical-align: middle;
+    margin-left: 10px;
+    border: 1px solid #000;
+  }
+  #pixelColors {
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+<h2>Color Selector with Surrounding Pixels</h2>
+
+<input type="file" id="uploadImage" accept="image/*" />
+<div id="canvasContainer">
+  <canvas id="canvas"></canvas>
+</div>
+
+<div id="colorDisplay">
+  <p>Selected Color: <span id="mainColorCode">#FFFFFF</span></p>
+  <div class="colorBox" id="mainColorBox"></div>
+</div>
+
+<div id="pixelColors">
+  <p>Surrounding Pixels:</p>
+  <ul>
+    <li>Up: <span id="upColorCode">#FFFFFF</span> <div class="colorBox" id="upColorBox"></div></li>
+    <li>Down: <span id="downColorCode">#FFFFFF</span> <div class="colorBox" id="downColorBox"></div></li>
+    <li>Left: <span id="leftColorCode">#FFFFFF</span> <div class="colorBox" id="leftColorBox"></div></li>
+    <li>Right: <span id="rightColorCode">#FFFFFF</span> <div class="colorBox" id="rightColorBox"></div></li>
+  </ul>
+</div>
+
+<script>
+const uploadInput = document.getElementById('uploadImage');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+const mainColorCode = document.getElementById('mainColorCode');
+const mainColorBox = document.getElementById('mainColorBox');
+
+const upColorCode = document.getElementById('upColorCode');
+const downColorCode = document.getElementById('downColorCode');
+const leftColorCode = document.getElementById('leftColorCode');
+const rightColorCode = document.getElementById('rightColorCode');
+
+const upColorBox = document.getElementById('upColorBox');
+const downColorBox = document.getElementById('downColorBox');
+const leftColorBox = document.getElementById('leftColorBox');
+const rightColorBox = document.getElementById('rightColorBox');
+
+let img = new Image();
+
+uploadInput.addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      img = new Image();
+      img.onload = function() {
+        // Resize canvas to image size
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+      }
+      img.src = event.target.result;
+    }
+    reader.readAsDataURL(file);
+  }
+});
+
+// When clicking on the canvas, get pixel data
+canvas.addEventListener('click', function(e) {
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.floor(e.clientX - rect.left);
+  const y = Math.floor(e.clientY - rect.top);
+
+  // Get pixel color at clicked position
+  const pixelData = ctx.getImageData(x, y, 1, 1).data;
+  const colorHex = rgbToHex(pixelData[0], pixelData[1], pixelData[2]);
+  updateColorDisplay(colorHex);
+  
+  // Get surrounding pixels
+  const offsets = [
+    {dx: 0, dy: -1, code: 'upColorCode', box: 'upColorBox'},     // Up
+    {dx: 0, dy: 1, code: 'downColorCode', box: 'downColorBox'},  // Down
+    {dx: -1, dy: 0, code: 'leftColorCode', box: 'leftColorBox'}, // Left
+    {dx: 1, dy: 0, code: 'rightColorCode', box: 'rightColorBox'} // Right
+  ];
+
+  offsets.forEach(offset => {
+    const nx = x + offset.dx;
+    const ny = y + offset.dy;
+    // Check boundaries
+    if (nx >= 0 && nx < ctx.canvas.width && ny >= 0 && ny < ctx.canvas.height) {
+      const data = ctx.getImageData(nx, ny, 1, 1).data;
+      const cHex = rgbToHex(data[0], data[1], data[2]);
+      document.getElementById(offset.code).textContent = cHex;
+      document.getElementById(offset.box).style.backgroundColor = cHex;
+    } else {
+      // Out of bounds
+      document.getElementById(offset.code).textContent = '#000000';
+      document.getElementById(offset.box).style.backgroundColor = '#000000';
+    }
+  });
+});
+
+// Convert RGB to HEX
+function rgbToHex(r, g, b) {
+  return "#" + [r, g, b].map(x => {
+    const hex = x.toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
+  }).join('');
+}
+
+// Update main color display
+function updateColorDisplay(hexColor) {
+  document.getElementById('mainColorCode').textContent = hexColor;
+  document.getElementById('mainColorBox').style.backgroundColor = hexColor;
+}
+</script>
+</body>
+</html>
