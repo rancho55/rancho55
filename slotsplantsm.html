@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Weed Slot Machine</title>
+  <!-- Use a modern clean font -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      margin: 0;
+      background: linear-gradient(135deg, #1b3a1a 0%, #2e6f2e 100%);
+      font-family: 'Montserrat', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #d0f0c0;
+      user-select: none;
+    }
+    .slot-machine {
+      background: #254d25;
+      border-radius: 25px;
+      padding: 40px 30px 30px;
+      box-shadow:
+        0 0 40px #7fff00,
+        inset 0 0 60px #4caf50;
+      width: 420px;
+      text-align: center;
+      position: relative;
+      border: 6px solid #7fff00;
+    }
+    .slot-title {
+      font-size: 2.8rem;
+      letter-spacing: 3px;
+      margin-bottom: 20px;
+      color: #aaffaa;
+      text-shadow:
+        0 0 10px #7fff00,
+        0 0 20px #4caf50;
+      font-weight: 900;
+    }
+    .weed-icons {
+      position: absolute;
+      top: -45px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 2.4rem;
+      color: #7fff00;
+      text-shadow: 0 0 15px #4caf50;
+    }
+    .info {
+      margin-bottom: 12px;
+      font-size: 1.1rem;
+      color: #c8facc;
+      text-shadow: 0 0 6px #2e6f2e;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+    button {
+      background: linear-gradient(90deg, #7fff00 0%, #4caf50 100%);
+      border: none;
+      padding: 12px 30px;
+      border-radius: 20px;
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: #1b3a1a;
+      cursor: pointer;
+      box-shadow: 0 0 15px #7fff00;
+      transition: background 0.3s ease;
+      user-select: none;
+    }
+    button:hover {
+      background: linear-gradient(90deg, #4caf50 0%, #7fff00 100%);
+      box-shadow: 0 0 25px #aaffaa;
+    }
+    .reels {
+      display: grid;
+      grid-template-columns: repeat(3, 80px);
+      grid-template-rows: repeat(3, 80px);
+      gap: 15px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .reel {
+      background: #d0f0c0;
+      border: 4px solid #4caf50;
+      border-radius: 15px;
+      width: 80px;
+      height: 80px;
+      font-size: 2.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow:
+        0 0 10px #7fff00,
+        inset 0 0 15px #aaffaa;
+      transition: background 0.2s;
+      user-select: none;
+      color: #2e6f2e;
+      text-shadow: 1px 1px 2px #1b3a1a;
+    }
+    .result-message {
+      font-size: 1.3rem;
+      min-height: 28px;
+      color: #aaffaa;
+      text-shadow: 0 0 8px #2e6f2e;
+      font-weight: 700;
+      font-family: 'Montserrat', sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div class="slot-machine" role="main" aria-label="Weed Slot Machine">
+    <div class="weed-icons">🍁🌿🍀</div>
+    <div class="slot-title">WEED SLOTS</div>
+    <div class="info" aria-live="polite">
+      Coins: <span id="coins">1111</span> | Bet: <span id="bet">10</span>
+    </div>
+    <div class="controls">
+      <button id="betBtn" aria-label="Change Bet Amount">Change Bet</button>
+      <button id="spinBtn" aria-label="Spin the slot machine">SPIN</button>
+    </div>
+    <div class="reels" id="reels" aria-live="polite" aria-atomic="true">
+      <!-- 3x3 grid reels -->
+    </div>
+    <div class="result-message" id="resultMessage" aria-live="polite" aria-atomic="true"></div>
+  </div>
+
+  <script>
+    // Weed-themed symbols
+    const symbols = ["🍁", "🌿", "🍀", "💨", "🔥", "🪴", "🌱"];
+    const betOptions = [10, 25, 50, 100];
+    let betIndex = 0;
+    let bet = betOptions[betIndex];
+    let coins = 1111;
+
+    const reelsContainer = document.getElementById('reels');
+    const coinsEl = document.getElementById('coins');
+    const betEl = document.getElementById('bet');
+    const resultMessage = document.getElementById('resultMessage');
+    const spinBtn = document.getElementById('spinBtn');
+    const betBtn = document.getElementById('betBtn');
+
+    let reelEls = [];
+
+    function createGrid() {
+      reelsContainer.innerHTML = '';
+      reelEls = [];
+      for (let i = 0; i < 9; i++) {
+        const div = document.createElement('div');
+        div.className = 'reel';
+        div.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+        reelsContainer.appendChild(div);
+        reelEls.push(div);
+      }
+    }
+    createGrid();
+
+    function updateInfo() {
+      coinsEl.textContent = coins;
+      betEl.textContent = bet;
+    }
+
+    function spinReels() {
+      if (coins < bet) {
+        resultMessage.textContent = "Not enough coins to light it up!";
+        return;
+      }
+      coins -= bet;
+      updateInfo();
+      let results = [];
+      for (let i = 0; i < 9; i++) {
+        const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+        reelEls[i].textContent = symbol;
+        results.push(symbol);
+      }
+      checkWin(results);
+    }
+
+    function checkWin(results) {
+      // Check all rows, columns, diagonals for 3 of a kind
+      const lines = [
+        [0,1,2], [3,4,5], [6,7,8], // rows
+        [0,3,6], [1,4,7], [2,5,8], // columns
+        [0,4,8], [2,4,6]           // diagonals
+      ];
+      let win = false;
+      let bigWin = false;
+      let winLines = 0;
+      let winSymbol = '';
+      lines.forEach(line => {
+        if (
+          results[line[0]] === results[line[1]] &&
+          results[line[1]] === results[line[2]]
+        ) {
+          win = true;
+          winLines++;
+          winSymbol = results[line[0]];
+          if (winSymbol === "🔥" || winSymbol === "💨") bigWin = true;
+        }
+      });
+
+      if (win) {
+        let payout = bet * 2 * winLines;
+        if (bigWin) payout = bet * 5 * winLines;
+        coins += payout;
+        updateInfo();
+        resultMessage.textContent = bigWin
+          ? `🔥 JACKPOT! ${winLines} line(s) of ${winSymbol}! You win ${payout} coins! 🌿`
+          : `Nice! ${winLines} line(s) matched. You win ${payout} coins! 🍁`;
+      } else {
+        resultMessage.textContent = "No luck this time, keep it green!";
+      }
+    }
+
+    spinBtn.addEventListener('click', () => {
+      resultMessage.textContent = "";
+      spinReels();
+    });
+
+    betBtn.addEventListener('click', () => {
+      betIndex = (betIndex + 1) % betOptions.length;
+      bet = betOptions[betIndex];
+      updateInfo();
+    });
+
+    updateInfo();
+  </script>
+</body>
+</html>

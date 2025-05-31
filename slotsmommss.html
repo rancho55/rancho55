@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Momma Motions Slot Machine with Sound</title>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet" />
+<style>
+  /* Base styles */
+  body {
+    margin: 0;
+    background: linear-gradient(135deg, #fceabb 0%, #f8b500 100%);
+    font-family: 'Pacifico', cursive, sans-serif;
+    color: #5a3e1b;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    user-select: none;
+  }
+  h1 {
+    margin: 30px 0 10px;
+    font-size: 3.5rem;
+    text-shadow: 2px 2px 4px #b37400;
+  }
+  .slot-machine {
+    background: #fff8e1;
+    border-radius: 35px;
+    box-shadow: 0 0 40px #f8b500 inset, 0 8px 20px rgba(248,181,0,0.4);
+    padding: 30px 25px 40px;
+    width: 520px;
+    max-width: 95vw;
+    text-align: center;
+    border: 6px solid #f8b500;
+  }
+  .info {
+    font-weight: 700;
+    font-size: 1.3rem;
+    margin-bottom: 20px;
+    color: #a05d00;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 20px;
+  }
+  .reels {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    margin-bottom: 25px;
+  }
+  .reel {
+    background: #fff3c4;
+    border: 4px solid #f8b500;
+    border-radius: 20px;
+    width: 90px;
+    height: 90px;
+    font-size: 3.8rem;
+    color: #d67f00;
+    box-shadow: 0 0 15px #f8b500 inset;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+    user-select: none;
+    transition: transform 0.5s ease;
+  }
+  .reel.spinning {
+    animation: spinReel 0.8s ease-in-out forwards;
+  }
+  @keyframes spinReel {
+    0% { transform: rotateX(0deg); }
+    50% { transform: rotateX(720deg); }
+    100% { transform: rotateX(0deg); }
+  }
+  .controls {
+    display: flex;
+    justify-content: center;
+    gap: 22px;
+    margin-bottom: 18px;
+  }
+  button {
+    background: linear-gradient(135deg, #f8b500 0%, #d67f00 100%);
+    border: none;
+    padding: 14px 40px;
+    border-radius: 30px;
+    font-family: 'Pacifico', cursive;
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: #5a3e1b;
+    cursor: pointer;
+    box-shadow: 0 0 25px #f8b500;
+    transition: background 0.3s ease, box-shadow 0.3s ease;
+    text-transform: uppercase;
+  }
+  button:hover:not(:disabled) {
+    background: linear-gradient(135deg, #d67f00 0%, #f8b500 100%);
+    box-shadow: 0 0 40px #ffd54f;
+  }
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+  .result-message {
+    font-size: 1.4rem;
+    min-height: 40px;
+    color: #d67f00;
+    font-weight: 700;
+    margin-top: 15px;
+    text-shadow: 0 0 8px #b37400;
+    user-select: none;
+  }
+</style>
+</head>
+<body>
+  <h1>Momma Motions</h1>
+  <div class="slot-machine" role="main" aria-label="Momma Motions themed slot machine">
+    <div class="info" aria-live="polite">
+      <span>Coins: <strong id="coins">1111</strong></span>
+      <span>Bet: <strong id="bet">10</strong></span>
+    </div>
+    <div class="reels" id="reels" aria-live="polite" aria-atomic="true" aria-label="Slot reels">
+      <!-- 5 reels -->
+    </div>
+    <div class="controls">
+      <button id="betBtn" aria-label="Change bet amount">Change Bet</button>
+      <button id="spinBtn" aria-label="Spin the slot machine">Spin</button>
+    </div>
+    <div class="result-message" id="resultMessage" aria-live="polite" aria-atomic="true"></div>
+  </div>
+
+  <!-- Sound elements -->
+  <audio id="spinSound" src="https://freesound.org/data/previews/66/66717_634166-lq.mp3" preload="auto"></audio>
+  <audio id="winSound" src="https://freesound.org/data/previews/320/320181_5260877-lq.mp3" preload="auto"></audio>
+
+<script>
+  const coinsEl = document.getElementById('coins');
+  const betEl = document.getElementById('bet');
+  const resultMessage = document.getElementById('resultMessage');
+  const spinBtn = document.getElementById('spinBtn');
+  const betBtn = document.getElementById('betBtn');
+  const reelsContainer = document.getElementById('reels');
+
+  const spinSound = document.getElementById('spinSound');
+  const winSound = document.getElementById('winSound');
+
+  // Momma Motions themed symbols (warm, family, motion-related)
+  const symbols = ["👩‍🦰", "🧺", "🍲", "🧸", "🛒", "🧦", "🧹"];
+
+  const betOptions = [10, 25, 50, 100];
+  let betIndex = 0;
+  let bet = betOptions[betIndex];
+  let coins = 1111;
+
+  let reelEls = [];
+
+  // Create 5 reels
+  function createGrid() {
+    reelsContainer.innerHTML = '';
+    reelEls = [];
+    for (let i = 0; i < 5; i++) {
+      const div = document.createElement('div');
+      div.className = 'reel';
+      div.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+      reelsContainer.appendChild(div);
+      reelEls.push(div);
+    }
+  }
+  createGrid();
+
+  function updateInfo() {
+    coinsEl.textContent = coins;
+    betEl.textContent = bet;
+  }
+
+  async function spinReels() {
+    if (coins < bet) {
+      resultMessage.textContent = "Not enough coins to spin!";
+      return;
+    }
+    coins -= bet;
+    updateInfo();
+    resultMessage.textContent = "";
+
+    // Play spin sound
+    spinSound.currentTime = 0;
+    spinSound.play();
+
+    reelEls.forEach(el => el.classList.add('spinning'));
+
+    // Spin animation duration
+    await new Promise(r => setTimeout(r, 800));
+
+    // Update reels with new symbols
+    let results = [];
+    reelEls.forEach(el => {
+      const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+      el.textContent = symbol;
+      el.classList.remove('spinning');
+      results.push(symbol);
+    });
+
+    const won = checkWin(results);
+
+    if (won) {
+      // Play win sound after spin ends
+      winSound.currentTime = 0;
+      winSound.play();
+    }
+  }
+
+  // Win if 3 or more matching symbols in a row starting from left
+  function checkWin(results) {
+    let count = 1;
+    let lastSymbol = results[0];
+    for (let i = 1; i < results.length; i++) {
+      if (results[i] === lastSymbol) {
+        count++;
+      } else {
+        break;
+      }
+    }
+    if (count >= 3) {
+      const payout = bet * count;
+      coins += payout;
+      updateInfo();
+      resultMessage.textContent = `You got ${count} ${lastSymbol} symbols! You win ${payout} coins! 🎉`;
+      return true;
+    } else {
+      resultMessage.textContent = "No win this spin. Try again!";
+      return false;
+    }
+  }
+
+  betBtn.addEventListener('click', () => {
+    betIndex = (betIndex + 1) % betOptions.length;
+    bet = betOptions[betIndex];
+    updateInfo();
+  });
+
+  spinBtn.addEventListener('click', spinReels);
+
+  updateInfo();
+</script>
+</body>
+</html>

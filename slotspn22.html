@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pinball Slot Machine - Modern Redesign</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at 60% 30%, #222 0%, #111 80%);
+      min-height: 100vh;
+      font-family: 'Orbitron', Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .pinball-bg {
+      position: fixed;
+      z-index: 0;
+      width: 100vw;
+      height: 100vh;
+      top: 0; left: 0;
+      pointer-events: none;
+      background: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80') center/cover no-repeat;
+      opacity: 0.12;
+      filter: blur(3px) brightness(0.7);
+      animation: bgPulse 12s infinite alternate;
+    }
+    @keyframes bgPulse {
+      0% { opacity: 0.12; }
+      100% { opacity: 0.18; }
+    }
+    .slot-machine {
+      position: relative;
+      z-index: 2;
+      background: linear-gradient(135deg, #292929 70%, #1a1a1a 100%);
+      border-radius: 32px;
+      box-shadow: 0 0 40px #ffec80, 0 0 0 6px #ffcc00 inset;
+      padding: 40px 38px 38px;
+      min-width: 420px;
+      max-width: 95vw;
+      text-align: center;
+      border: 3px solid #ffcc00;
+      overflow: visible;
+    }
+    .slot-title {
+      font-size: 2.7rem;
+      color: #ffec80;
+      letter-spacing: 4px;
+      margin-bottom: 18px;
+      text-shadow: 0 0 12px #ffcc00, 0 0 40px #ffec80;
+      animation: neonTitle 2s infinite alternate;
+    }
+    @keyframes neonTitle {
+      0% { text-shadow: 0 0 12px #ffcc00, 0 0 40px #ffec80; }
+      100% { text-shadow: 0 0 24px #ffcc00, 0 0 80px #fff8c0;}
+    }
+    .info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 1.15rem;
+      color: #fff8c0;
+      margin-bottom: 18px;
+      font-weight: bold;
+      text-shadow: 0 0 6px #ffcc00;
+      padding: 0 10px;
+    }
+    .bumpers-panel {
+      display: flex;
+      justify-content: center;
+      gap: 18px;
+      margin-bottom: 22px;
+      background: rgba(34,34,34,0.8);
+      border-radius: 18px;
+      padding: 10px 0;
+      box-shadow: 0 0 10px #ffcc00 inset;
+    }
+    .bumper-btn {
+      background: linear-gradient(135deg, #fff8c0 0%, #ffcc00 100%);
+      border: none;
+      border-radius: 50%;
+      width: 48px; height: 48px;
+      font-size: 2rem;
+      color: #d18c00;
+      box-shadow: 0 0 12px #ffec80, 0 0 0 2px #ffcc00 inset;
+      cursor: pointer;
+      transition: box-shadow 0.2s, background 0.2s;
+      position: relative;
+      outline: none;
+    }
+    .bumper-btn.active, .bumper-btn:focus {
+      box-shadow: 0 0 24px #fff8c0, 0 0 0 4px #ffcc00 inset, 0 0 8px #ffec80;
+      background: linear-gradient(135deg, #ffec80 0%, #ffcc00 100%);
+    }
+    .bumper-label {
+      display: block;
+      font-size: 0.85rem;
+      color: #ffec80;
+      margin-top: 3px;
+      font-weight: bold;
+      text-shadow: 0 0 4px #222;
+    }
+    .reels {
+      display: grid;
+      grid-template-columns: repeat(3, 90px);
+      grid-template-rows: repeat(3, 90px);
+      gap: 20px;
+      justify-content: center;
+      margin-bottom: 30px;
+      perspective: 1000px;
+    }
+    .reel {
+      background: linear-gradient(135deg, #333 60%, #555 100%);
+      border-radius: 20px;
+      border: 3px solid #ffcc00;
+      width: 90px;
+      height: 90px;
+      font-size: 2.8rem;
+      color: #ffec80;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px #ffec80, 0 0 0 2px #ffcc00 inset;
+      transition: transform 0.5s, background 0.2s;
+      position: relative;
+      overflow: hidden;
+      animation: popIn 0.4s;
+    }
+    @keyframes popIn {
+      0% { transform: scale(0.7);}
+      100% { transform: scale(1);}
+    }
+    .reel.spinning {
+      animation: spinReel 0.7s cubic-bezier(.4,2,.6,.8) forwards;
+    }
+    @keyframes spinReel {
+      0% { transform: rotateY(0deg);}
+      50% { transform: rotateY(540deg);}
+      100% { transform: rotateY(0deg);}
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 22px;
+      margin-bottom: 18px;
+    }
+    button {
+      background: linear-gradient(135deg, #ffec80 0%, #ffcc00 100%);
+      border: none;
+      padding: 14px 36px;
+      border-radius: 25px;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: #222;
+      cursor: pointer;
+      box-shadow: 0 0 18px #ffec80, 0 0 0 2px #ffcc00 inset;
+      transition: background 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+    button:active, button:focus {
+      background: linear-gradient(135deg, #fff8c0 0%, #ffcc00 100%);
+      box-shadow: 0 0 28px #ffec80, 0 0 0 4px #ffcc00 inset;
+    }
+    .result-message {
+      font-size: 1.3rem;
+      min-height: 36px;
+      color: #fff8c0;
+      text-shadow: 0 0 10px #ffcc00, 0 0 20px #ffec80;
+      font-weight: 700;
+      margin-top: 10px;
+      letter-spacing: 1.2px;
+      animation: popIn 0.4s;
+    }
+  </style>
+</head>
+<body>
+  <div class="pinball-bg"></div>
+  <div class="slot-machine" role="main" aria-label="Pinball slot machine, modern design">
+    <div class="slot-title">PINBALL SLOTS</div>
+    <div class="info">
+      <span>Coins: <strong id="coins">1111</strong></span>
+      <span>Bet: <strong id="bet">10</strong></span>
+    </div>
+    <div class="bumpers-panel">
+      <button class="bumper-btn active" id="leftBumper" aria-pressed="true" title="Boost Jackpot">
+        🟡
+        <span class="bumper-label">Left</span>
+      </button>
+      <button class="bumper-btn active" id="rightBumper" aria-pressed="true" title="Boost Mid Wins">
+        🟠
+        <span class="bumper-label">Right</span>
+      </button>
+      <button class="bumper-btn active" id="centerBumper" aria-pressed="true" title="Boost Small Wins">
+        🔵
+        <span class="bumper-label">Center</span>
+      </button>
+    </div>
+    <div class="reels" id="reels" aria-live="polite" aria-atomic="true" aria-label="Slot reels"></div>
+    <div class="controls">
+      <button id="betBtn" aria-label="Change bet amount">Change Bet</button>
+      <button id="spinBtn" aria-label="Spin the slot machine">SPIN</button>
+    </div>
+    <div class="result-message" id="resultMessage" aria-live="polite" aria-atomic="true"></div>
+  </div>
+<script>
+  // Modern pinball slot machine logic
+  const coinsEl = document.getElementById('coins');
+  const betEl = document.getElementById('bet');
+  const resultMessage = document.getElementById('resultMessage');
+  const spinBtn = document.getElementById('spinBtn');
+  const betBtn = document.getElementById('betBtn');
+  const reelsContainer = document.getElementById('reels');
+
+  // Bumper buttons
+  const leftBumper = document.getElementById('leftBumper');
+  const rightBumper = document.getElementById('rightBumper');
+  const centerBumper = document.getElementById('centerBumper');
+
+  // Symbols grouped by payout tier
+  const jackpotSymbols = ["💎", "🎰", "⭐"];
+  const midSymbols = ["🍒", "🔔", "🍋"];
+  const smallSymbols = ["7️⃣", "🍊", "🍉"];
+  const allSymbols = [...jackpotSymbols, ...midSymbols, ...smallSymbols];
+
+  const betOptions = [10, 25, 50, 100];
+  let betIndex = 0;
+  let bet = betOptions[betIndex];
+  let coins = 1111;
+
+  let bumpers = {
+    left: true,
+    right: true,
+    center: true
+  };
+
+  let reelEls = [];
+
+  function createGrid() {
+    reelsContainer.innerHTML = '';
+    reelEls = [];
+    for (let i = 0; i < 9; i++) {
+      const div = document.createElement('div');
+      div.className = 'reel';
+      div.textContent = allSymbols[Math.floor(Math.random() * allSymbols.length)];
+      reelsContainer.appendChild(div);
+      reelEls.push(div);
+    }
+  }
+  createGrid();
+
+  function updateInfo() {
+    coinsEl.textContent = coins;
+    betEl.textContent = bet;
+  }
+
+  function getWeightedSymbol() {
+    // Base weights
+    let weights = {
+      jackpot: 6,
+      mid: 15,
+      small: 30
+    };
+    if (bumpers.left) weights.jackpot += 12;
+    if (bumpers.right) weights.mid += 12;
+    if (bumpers.center) weights.small += 12;
+
+    const totalWeight = weights.jackpot + weights.mid + weights.small;
+    const rand = Math.random() * totalWeight;
+    if (rand < weights.jackpot) {
+      return jackpotSymbols[Math.floor(Math.random() * jackpotSymbols.length)];
+    } else if (rand < weights.jackpot + weights.mid) {
+      return midSymbols[Math.floor(Math.random() * midSymbols.length)];
+    } else {
+      return smallSymbols[Math.floor(Math.random() * smallSymbols.length)];
+    }
+  }
+
+  async function spinReels() {
+    if (coins < bet) {
+      resultMessage.textContent = "Not enough coins to spin!";
+      return;
+    }
+    coins -= bet;
+    updateInfo();
+    resultMessage.textContent = "";
+
+    reelEls.forEach(el => el.classList.add('spinning'));
+    await new Promise(r => setTimeout(r, 700));
+    let results = [];
+    reelEls.forEach(el => {
+      const symbol = getWeightedSymbol();
+      el.textContent = symbol;
+      el.classList.remove('spinning');
+      results.push(symbol);
+    });
+    checkWin(results);
+  }
+
+  function checkWin(results) {
+    const lines = [
+      [0,1,2], [3,4,5], [6,7,8], // rows
+      [0,3,6], [1,4,7], [2,5,8], // columns
+      [0,4,8], [2,4,6]           // diagonals
+    ];
+    let winLines = 0;
+    let winSymbols = [];
+    lines.forEach(line => {
+      if (results[line[0]] === results[line[1]] && results[line[1]] === results[line[2]]) {
+        winLines++;
+        winSymbols.push(results[line[0]]);
+      }
+    });
+    if (winLines === 0) {
+      resultMessage.textContent = "No win this spin. Try again!";
+      return;
+    }
+    let payout = 0;
+    winSymbols.forEach(sym => {
+      if (jackpotSymbols.includes(sym)) payout += bet * 10;
+      else if (midSymbols.includes(sym)) payout += bet * 5;
+      else if (smallSymbols.includes(sym)) payout += bet * 2;
+    });
+    coins += payout;
+    updateInfo();
+    resultMessage.textContent = `You won ${payout} coins on ${winLines} line${winLines > 1 ? 's' : ''}! 🎉`;
+  }
+
+  spinBtn.addEventListener('click', spinReels);
+  betBtn.addEventListener('click', () => {
+    betIndex = (betIndex + 1) % betOptions.length;
+    bet = betOptions[betIndex];
+    updateInfo();
+  });
+
+  // Bumper toggles with visual feedback
+  leftBumper.addEventListener('click', () => {
+    bumpers.left = !bumpers.left;
+    leftBumper.classList.toggle('active', bumpers.left);
+    leftBumper.setAttribute('aria-pressed', bumpers.left);
+  });
+  rightBumper.addEventListener('click', () => {
+    bumpers.right = !bumpers.right;
+    rightBumper.classList.toggle('active', bumpers.right);
+    rightBumper.setAttribute('aria-pressed', bumpers.right);
+  });
+  centerBumper.addEventListener('click', () => {
+    bumpers.center = !bumpers.center;
+    centerBumper.classList.toggle('active', bumpers.center);
+    centerBumper.setAttribute('aria-pressed', bumpers.center);
+  });
+
+  updateInfo();
+</script>
+</body>
+</html>

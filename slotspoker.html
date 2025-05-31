@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Five Card Poker Slot Machine</title>
+  <!-- Use a card-themed font -->
+  <link href="https://fonts.googleapis.com/css2?family=Staatliches&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      margin: 0;
+      background: linear-gradient(135deg, #0d1424 0%, #3e4a6d 100%);
+      font-family: 'Staatliches', Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #fff;
+      user-select: none;
+    }
+    .slot-machine {
+      background: #1d2333;
+      border-radius: 25px;
+      padding: 40px 30px 30px;
+      box-shadow: 0 0 40px #a8b0c8, 0 0 20px #0d1424;
+      width: 480px;
+      text-align: center;
+      position: relative;
+      border: 6px solid #e6e6e6;
+    }
+    .slot-title {
+      font-size: 2.5rem;
+      letter-spacing: 4px;
+      margin-bottom: 20px;
+      color: #ffd700;
+      text-shadow: 0 0 10px #222, 0 0 20px #ffd700;
+      font-family: 'Staatliches', Arial, sans-serif;
+    }
+    .poker-icons {
+      position: absolute;
+      top: -45px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 2.2rem;
+      color: #ffd700;
+      text-shadow: 0 0 15px #0d1424;
+    }
+    .info {
+      margin-bottom: 14px;
+      font-size: 1.2rem;
+      color: #ffd700;
+      text-shadow: 0 0 6px #0d1424;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 18px;
+    }
+    button {
+      background: linear-gradient(90deg, #ffd700 0%, #e6e6e6 100%);
+      border: none;
+      padding: 12px 32px;
+      border-radius: 20px;
+      font-family: 'Staatliches', Arial, sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: #1d2333;
+      cursor: pointer;
+      box-shadow: 0 0 15px #ffd700;
+      transition: background 0.3s ease;
+      user-select: none;
+    }
+    button:hover {
+      background: linear-gradient(90deg, #e6e6e6 0%, #ffd700 100%);
+      box-shadow: 0 0 25px #ffd700;
+    }
+    .cards {
+      display: flex;
+      justify-content: center;
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+    .card {
+      background: #fff;
+      border: 3px solid #ffd700;
+      border-radius: 12px;
+      width: 70px;
+      height: 100px;
+      font-size: 2.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 10px #ffd700, inset 0 0 8px #e6e6e6;
+      color: #1d2333;
+      position: relative;
+      transition: border 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+    }
+    .card.held {
+      border: 3px solid #3ecf4c;
+      box-shadow: 0 0 15px #3ecf4c;
+    }
+    .hold-label {
+      position: absolute;
+      bottom: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.95rem;
+      color: #3ecf4c;
+      font-weight: bold;
+      letter-spacing: 1px;
+      text-shadow: 0 0 5px #fff;
+      display: none;
+    }
+    .card.held .hold-label {
+      display: block;
+    }
+    .result-message {
+      font-size: 1.3rem;
+      min-height: 28px;
+      color: #ffd700;
+      text-shadow: 0 0 8px #0d1424;
+      font-weight: 700;
+      font-family: 'Staatliches', Arial, sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div class="slot-machine" role="main" aria-label="Five Card Poker Slot Machine">
+    <div class="poker-icons">🃏♠️♥️♣️♦️</div>
+    <div class="slot-title">FIVE CARD POKER SLOTS</div>
+    <div class="info" aria-live="polite">
+      Coins: <span id="coins">1111</span> | Bet: <span id="bet">10</span>
+    </div>
+    <div class="controls">
+      <button id="betBtn" aria-label="Change Bet Amount">Change Bet</button>
+      <button id="dealBtn" aria-label="Deal new hand">DEAL</button>
+      <button id="drawBtn" aria-label="Draw new cards" disabled>DRAW</button>
+    </div>
+    <div class="cards" id="cards" aria-live="polite" aria-atomic="true">
+      <!-- 5 cards, filled by JS -->
+    </div>
+    <div class="result-message" id="resultMessage" aria-live="polite" aria-atomic="true"></div>
+  </div>
+  <script>
+    // Poker deck: 52 cards
+    const suits = ['♠️', '♥️', '♣️', '♦️'];
+    const ranks = [
+      {symbol: 'A', value: 14},
+      {symbol: 'K', value: 13},
+      {symbol: 'Q', value: 12},
+      {symbol: 'J', value: 11},
+      {symbol: '10', value: 10},
+      {symbol: '9', value: 9},
+      {symbol: '8', value: 8},
+      {symbol: '7', value: 7},
+      {symbol: '6', value: 6},
+      {symbol: '5', value: 5},
+      {symbol: '4', value: 4},
+      {symbol: '3', value: 3},
+      {symbol: '2', value: 2},
+    ];
+    const betOptions = [10, 25, 50, 100];
+    let betIndex = 0;
+    let bet = betOptions[betIndex];
+    let coins = 1111;
+
+    let deck = [];
+    let hand = [];
+    let held = [false, false, false, false, false];
+    let inDrawPhase = false;
+
+    const cardsContainer = document.getElementById('cards');
+    const coinsEl = document.getElementById('coins');
+    const betEl = document.getElementById('bet');
+    const resultMessage = document.getElementById('resultMessage');
+    const dealBtn = document.getElementById('dealBtn');
+    const drawBtn = document.getElementById('drawBtn');
+    const betBtn = document.getElementById('betBtn');
+
+    function makeDeck() {
+      let d = [];
+      for (let s = 0; s < suits.length; s++) {
+        for (let r = 0; r < ranks.length; r++) {
+          d.push({ suit: suits[s], rank: ranks[r].symbol, value: ranks[r].value });
+        }
+      }
+      for (let i = d.length - 1; i > 0; i--) {
+        let j = Math.floor(Math.random() * (i + 1));
+        [d[i], d[j]] = [d[j], d[i]];
+      }
+      return d;
+    }
+
+    function updateInfo() {
+      coinsEl.textContent = coins;
+      betEl.textContent = bet;
+    }
+
+    function renderHand() {
+      cardsContainer.innerHTML = '';
+      for (let i = 0; i < 5; i++) {
+        const card = hand[i];
+        const div = document.createElement('div');
+        div.className = 'card' + (held[i] ? ' held' : '');
+        div.innerHTML = card
+          ? `<span>${card.rank}${card.suit}</span><span class="hold-label">HELD</span>`
+          : '';
+        div.addEventListener('click', () => {
+          if (inDrawPhase) {
+            held[i] = !held[i];
+            renderHand();
+          }
+        });
+        cardsContainer.appendChild(div);
+      }
+    }
+
+    function deal() {
+      if (coins < bet) {
+        resultMessage.textContent = "Not enough coins to deal!";
+        return;
+      }
+      coins -= bet;
+      updateInfo();
+      deck = makeDeck();
+      hand = [];
+      held = [false, false, false, false, false];
+      for (let i = 0; i < 5; i++) {
+        hand.push(deck.pop());
+      }
+      inDrawPhase = true;
+      renderHand();
+      drawBtn.disabled = false;
+      dealBtn.disabled = true;
+      resultMessage.textContent = "Select cards to hold, then press DRAW.";
+    }
+
+    function draw() {
+      for (let i = 0; i < 5; i++) {
+        if (!held[i]) {
+          hand[i] = deck.pop();
+        }
+      }
+      inDrawPhase = false;
+      renderHand();
+      drawBtn.disabled = true;
+      dealBtn.disabled = false;
+      evaluateHand();
+    }
+
+    function evaluateHand() {
+      // Count occurrences of each rank and suit
+      const rankCounts = {};
+      const suitCounts = {};
+      const values = [];
+      hand.forEach(card => {
+        rankCounts[card.rank] = (rankCounts[card.rank] || 0) + 1;
+        suitCounts[card.suit] = (suitCounts[card.suit] || 0) + 1;
+        values.push(card.value);
+      });
+      values.sort((a, b) => b - a);
+
+      // Check for flush
+      const isFlush = Object.values(suitCounts).some(count => count === 5);
+
+      // Check for straight
+      let isStraight = false;
+      for (let i = 0; i < values.length - 1; i++) {
+        if (values[i] - values[i + 1] !== 1) {
+          // Special case: A, 5, 4, 3, 2 (wheel)
+          if (i === 0 && values[0] === 14 && values[1] === 5 && values[2] === 4 && values[3] === 3 && values[4] === 2) {
+            isStraight = true;
+            break;
+          }
+          isStraight = false;
+          break;
+        } else {
+          isStraight = true;
+        }
+      }
+      if (values[0] === 14 && values[1] === 5 && values[2] === 4 && values[3] === 3 && values[4] === 2) {
+        isStraight = true;
+      }
+
+      // Count of each kind
+      const counts = Object.values(rankCounts).sort((a, b) => b - a);
+
+      // Determine hand
+      let payout = 0;
+      let handName = "";
+      if (isFlush && isStraight && values[0] === 14) {
+        handName = "Royal Flush";
+        payout = bet * 100;
+      } else if (isFlush && isStraight) {
+        handName = "Straight Flush";
+        payout = bet * 50;
+      } else if (counts[0] === 4) {
+        handName = "Four of a Kind";
+        payout = bet * 25;
+      } else if (counts[0] === 3 && counts[1] === 2) {
+        handName = "Full House";
+        payout = bet * 10;
+      } else if (isFlush) {
+        handName = "Flush";
+        payout = bet * 7;
+      } else if (isStraight) {
+        handName = "Straight";
+        payout = bet * 5;
+      } else if (counts[0] === 3) {
+        handName = "Three of a Kind";
+        payout = bet * 3;
+      } else if (counts[0] === 2 && counts[1] === 2) {
+        handName = "Two Pair";
+        payout = bet * 2;
+      } else if (counts[0] === 2) {
+        handName = "Pair";
+        payout = bet * 1;
+      } else {
+        handName = "No Win";
+        payout = 0;
+      }
+
+      if (payout > 0) {
+        coins += payout;
+        updateInfo();
+        resultMessage.textContent = `You got a ${handName}! You win ${payout} coins!`;
+      } else {
+        resultMessage.textContent = "No win. Try again!";
+      }
+    }
+
+    dealBtn.addEventListener('click', () => {
+      resultMessage.textContent = "";
+      deal();
+    });
+
+    drawBtn.addEventListener('click', () => {
+      draw();
+    });
+
+    betBtn.addEventListener('click', () => {
+      if (inDrawPhase) return;
+      betIndex = (betIndex + 1) % betOptions.length;
+      bet = betOptions[betIndex];
+      updateInfo();
+    });
+
+    // Initial hand
+    hand = [null, null, null, null, null];
+    renderHand();
+    updateInfo();
+  </script>
+</body>
+</html>

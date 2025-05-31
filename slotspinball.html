@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pinball Slot Machine with Adjustable Bumpers</title>
+<style>
+  body {
+    margin: 0; padding: 0;
+    background: radial-gradient(circle at center, #111 0%, #222 90%);
+    font-family: 'Orbitron', sans-serif;
+    color: #eee;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    user-select: none;
+  }
+  h1 {
+    margin: 20px 0 10px;
+    color: #ffcc00;
+    text-shadow: 0 0 8px #ffcc00;
+  }
+  .slot-machine {
+    background: #222;
+    border-radius: 20px;
+    padding: 30px 40px 40px;
+    box-shadow: 0 0 30px #ffcc00 inset;
+    width: 480px;
+    text-align: center;
+  }
+  .reels {
+    display: grid;
+    grid-template-columns: repeat(3, 100px);
+    grid-template-rows: repeat(3, 100px);
+    gap: 15px;
+    justify-content: center;
+    margin-bottom: 25px;
+  }
+  .reel {
+    background: radial-gradient(circle at center, #444, #111);
+    border: 3px solid #ffcc00;
+    border-radius: 15px;
+    font-size: 3.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffcc00;
+    box-shadow:
+      0 0 15px #ffcc00,
+      inset 0 0 10px #aa8800;
+    transition: transform 0.5s ease;
+  }
+  .reel.spinning {
+    animation: spinReel 0.8s ease-in-out forwards;
+  }
+  @keyframes spinReel {
+    0% { transform: rotateX(0deg); }
+    50% { transform: rotateX(720deg); }
+    100% { transform: rotateX(0deg); }
+  }
+  .controls {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  button {
+    background: linear-gradient(135deg, #ffcc00 0%, #aa8800 100%);
+    border: none;
+    padding: 12px 28px;
+    border-radius: 25px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    cursor: pointer;
+    color: #222;
+    box-shadow: 0 0 15px #ffcc00;
+    transition: background 0.3s ease;
+  }
+  button:hover:not(:disabled) {
+    background: linear-gradient(135deg, #aa8800 0%, #ffcc00 100%);
+    box-shadow: 0 0 25px #ffdd44;
+  }
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+  .info {
+    font-size: 1.2rem;
+    margin-bottom: 20px;
+  }
+  .bumpers {
+    background: #111;
+    border: 2px solid #ffcc00;
+    border-radius: 15px;
+    padding: 15px;
+    margin-bottom: 25px;
+  }
+  .bumpers h2 {
+    margin-top: 0;
+    color: #ffcc00;
+    text-shadow: 0 0 6px #ffcc00;
+  }
+  .bumper {
+    display: flex;
+    align-items: center;
+    margin: 8px 0;
+  }
+  .bumper label {
+    flex: 1;
+    font-weight: 600;
+  }
+  .bumper input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+  }
+  .result-message {
+    font-size: 1.3rem;
+    min-height: 36px;
+    color: #ffcc00;
+    text-shadow: 0 0 10px #aa8800;
+    font-weight: 700;
+    user-select: none;
+  }
+</style>
+</head>
+<body>
+
+<h1>Pinball Slot Machine</h1>
+<div class="slot-machine" role="main" aria-label="Pinball themed slot machine with adjustable bumpers">
+  <div class="info" aria-live="polite">
+    Coins: <strong id="coins">1111</strong> | Bet: <strong id="bet">10</strong>
+  </div>
+
+  <div class="bumpers" aria-label="Adjustable bumpers settings">
+    <h2>Adjust Bumpers (Affect Spin Odds)</h2>
+    <div class="bumper">
+      <label for="bumper1">Left Bumper (Boost Jackpot)</label>
+      <input type="checkbox" id="bumper1" checked />
+    </div>
+    <div class="bumper">
+      <label for="bumper2">Right Bumper (Boost Mid Wins)</label>
+      <input type="checkbox" id="bumper2" checked />
+    </div>
+    <div class="bumper">
+      <label for="bumper3">Center Bumper (Boost Small Wins)</label>
+      <input type="checkbox" id="bumper3" checked />
+    </div>
+  </div>
+
+  <div class="reels" id="reels" aria-live="polite" aria-atomic="true" aria-label="Slot reels">
+    <!-- 3x3 reels -->
+  </div>
+
+  <div class="controls">
+    <button id="betBtn" aria-label="Change bet amount">Change Bet</button>
+    <button id="spinBtn" aria-label="Spin the slot machine">SPIN</button>
+  </div>
+
+  <div class="result-message" id="resultMessage" aria-live="polite" aria-atomic="true"></div>
+</div>
+
+<script>
+  const coinsEl = document.getElementById('coins');
+  const betEl = document.getElementById('bet');
+  const resultMessage = document.getElementById('resultMessage');
+  const spinBtn = document.getElementById('spinBtn');
+  const betBtn = document.getElementById('betBtn');
+  const reelsContainer = document.getElementById('reels');
+
+  const bumperElems = [
+    document.getElementById('bumper1'),
+    document.getElementById('bumper2'),
+    document.getElementById('bumper3')
+  ];
+
+  // Symbols grouped by payout tier
+  const jackpotSymbols = ["💎", "🎰", "⭐"];
+  const midSymbols = ["🍒", "🔔", "🍋"];
+  const smallSymbols = ["7️⃣", "🍊", "🍉"];
+  const allSymbols = [...jackpotSymbols, ...midSymbols, ...smallSymbols];
+
+  const betOptions = [10, 25, 50, 100];
+  let betIndex = 0;
+  let bet = betOptions[betIndex];
+  let coins = 1111;
+
+  let reelEls = [];
+
+  function createGrid() {
+    reelsContainer.innerHTML = '';
+    reelEls = [];
+    for (let i = 0; i < 9; i++) {
+      const div = document.createElement('div');
+      div.className = 'reel';
+      div.textContent = allSymbols[Math.floor(Math.random() * allSymbols.length)];
+      reelsContainer.appendChild(div);
+      reelEls.push(div);
+    }
+  }
+  createGrid();
+
+  function updateInfo() {
+    coinsEl.textContent = coins;
+    betEl.textContent = bet;
+  }
+
+  // Generate weighted symbol based on bumpers
+  function getWeightedSymbol() {
+    // Base weights
+    let weights = {
+      jackpot: 5,
+      mid: 15,
+      small: 30
+    };
+
+    // Adjust weights based on bumpers
+    if (bumperElems[0].checked) weights.jackpot += 10; // Left bumper boosts jackpot
+    if (bumperElems[1].checked) weights.mid += 10;     // Right bumper boosts mid wins
+    if (bumperElems[2].checked) weights.small += 10;   // Center bumper boosts small wins
+
+    const totalWeight = weights.jackpot + weights.mid + weights.small;
+    const rand = Math.random() * totalWeight;
+
+    if (rand < weights.jackpot) {
+      return jackpotSymbols[Math.floor(Math.random() * jackpotSymbols.length)];
+    } else if (rand < weights.jackpot + weights.mid) {
+      return midSymbols[Math.floor(Math.random() * midSymbols.length)];
+    } else {
+      return smallSymbols[Math.floor(Math.random() * smallSymbols.length)];
+    }
+  }
+
+  async function spinReels() {
+    if (coins < bet) {
+      resultMessage.textContent = "Not enough coins to spin!";
+      return;
+    }
+    coins -= bet;
+    updateInfo();
+    resultMessage.textContent = "";
+
+    reelEls.forEach(el => el.classList.add('spinning'));
+
+    // Wait for animation duration
+    await new Promise(r => setTimeout(r, 800));
+
+    let results = [];
+    reelEls.forEach(el => {
+      const symbol = getWeightedSymbol();
+      el.textContent = symbol;
+      el.classList.remove('spinning');
+      results.push(symbol);
+    });
+
+    checkWin(results);
+  }
+
+  function checkWin(results) {
+    // Lines to check: rows, columns, diagonals
+    const lines = [
+      [0,1,2], [3,4,5], [6,7,8],  // rows
+      [0,3,6], [1,4,7], [2,5,8],  // columns
+      [0,4,8], [2,4,6]            // diagonals
+    ];
+
+    let winLines = 0;
+    let winSymbols = [];
+
+    lines.forEach(line => {
+      if (results[line[0]] === results[line[1]] && results[line[1]] === results[line[2]]) {
+        winLines++;
+        winSymbols.push(results[line[0]]);
+      }
+    });
+
+    if (winLines === 0) {
+      resultMessage.textContent = "No win this spin. Try again!";
+      return;
+    }
+
+    // Calculate payout
+    let payout = 0;
+    winSymbols.forEach(sym => {
+      if (jackpotSymbols.includes(sym)) payout += bet * 10;
+      else if (midSymbols.includes(sym)) payout += bet * 5;
+      else if (smallSymbols.includes(sym)) payout += bet * 2;
+    });
+
+    coins += payout;
+    updateInfo();
+
+    resultMessage.textContent = `You won ${payout} coins on ${winLines} line${winLines > 1 ? 's' : ''}! 🎉`;
+  }
+
+  spinBtn.addEventListener('click', spinReels);
+  betBtn.addEventListener('click', () => {
+    betIndex = (betIndex + 1) % betOptions.length;
+    bet = betOptions[betIndex];
+    updateInfo();
+  });
+
+  updateInfo();
+</script>
+
+</body>
+</html>
