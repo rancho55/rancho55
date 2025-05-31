@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bingo Machine & Card 🎱</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0; padding: 0;
+      font-family: 'Orbitron', sans-serif;
+      background: linear-gradient(135deg, #003366, #ffd700 90%);
+      color: #fff;
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: flex-start;
+    }
+    h1 {
+      font-size: 2.7em;
+      margin: 38px 0 10px 0;
+      color: #ffd700;
+      text-shadow: 0 0 20px #ffd700, 0 0 10px #003366;
+      letter-spacing: 2px;
+    }
+    .bingo-machine {
+      background: rgba(0,0,0,0.85);
+      border-radius: 30px;
+      padding: 35px 30px 30px 30px;
+      box-shadow: 0 0 40px #ffd700, 0 0 20px #003366;
+      border: 4px solid #ffd700;
+      text-align: center;
+      margin-bottom: 30px;
+      margin-top: 10px;
+      width: 95%;
+      max-width: 700px;
+      position: relative;
+      z-index: 1;
+    }
+    .bingo-card-area {
+      margin-bottom: 30px;
+    }
+    .bingo-card-label {
+      font-size: 1.25em;
+      color: #ffd700;
+      margin-bottom: 10px;
+      letter-spacing: 1px;
+    }
+    .bingo-card {
+      margin: 0 auto 18px auto;
+      border-collapse: collapse;
+      background: rgba(255,255,255,0.07);
+      box-shadow: 0 0 15px #ffd700;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .bingo-card th, .bingo-card td {
+      width: 50px; height: 50px;
+      text-align: center;
+      font-size: 1.3em;
+      font-weight: bold;
+      border: 2px solid #ffd700;
+      background: #003366;
+      color: #fff;
+      transition: background 0.2s, color 0.2s;
+      position: relative;
+    }
+    .bingo-card th {
+      background: linear-gradient(135deg, #ffd700, #bf0a30 80%);
+      color: #222;
+      font-size: 1.1em;
+      text-shadow: 0 0 6px #fff;
+      border-bottom: 3px solid #ffd700;
+    }
+    .bingo-card .free {
+      background: #ffd700 !important;
+      color: #bf0a30 !important;
+      font-size: 1.1em;
+      letter-spacing: 1px;
+      box-shadow: 0 0 15px #fff;
+    }
+    .bingo-card .marked {
+      background: linear-gradient(135deg, #ffd700 60%, #bf0a30 100%) !important;
+      color: #222 !important;
+      box-shadow: 0 0 20px #ffd700, 0 0 10px #fff;
+      animation: neon-glow 1.2s infinite alternate;
+    }
+    @keyframes neon-glow {
+      from { box-shadow: 0 0 10px #ffd700, 0 0 4px #fff; }
+      to   { box-shadow: 0 0 30px #ffd700, 0 0 20px #fff; }
+    }
+    .draw-card-btn {
+      background: linear-gradient(135deg, #ffd700, #bf0a30 80%);
+      color: #222;
+      font-size: 1.2em;
+      font-weight: bold;
+      border: none;
+      border-radius: 28px;
+      padding: 12px 36px;
+      box-shadow: 0 0 18px #ffd700, 0 0 8px #fff;
+      margin: 10px 0 20px 0;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-shadow: 0 0 6px #fff;
+      outline: none;
+      user-select: none;
+    }
+    .draw-card-btn:hover {
+      background: linear-gradient(135deg, #bf0a30, #ffd700 80%);
+      color: #ffd700;
+      box-shadow: 0 0 40px #ffd700, 0 0 16px #fff;
+      transform: scale(1.07);
+    }
+    .current-ball-area {
+      margin-bottom: 30px;
+      min-height: 120px;
+    }
+    .current-ball-label {
+      font-size: 1.4em;
+      color: #ffd700;
+      margin-bottom: 10px;
+      letter-spacing: 1px;
+    }
+    .current-ball {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #fff 60%, #ffd700 100%);
+      color: #003366;
+      font-size: 3.2em;
+      font-weight: bold;
+      box-shadow: 0 0 60px #ffd700, 0 0 40px #003366;
+      border: 6px solid #ffd700;
+      margin: 0 auto;
+      animation: popIn 0.5s;
+      position: relative;
+      text-shadow: 0 0 8px #fff, 0 0 6px #ffd700;
+    }
+    @keyframes popIn {
+      0% { transform: scale(0.2); opacity: 0; }
+      80% { transform: scale(1.15); opacity: 1; }
+      100% { transform: scale(1); }
+    }
+    .bingo-letter {
+      font-size: 0.7em;
+      font-weight: bold;
+      color: #bf0a30;
+      background: #ffd700;
+      border-radius: 50%;
+      padding: 0.2em 0.6em;
+      margin-right: 0.3em;
+      box-shadow: 0 0 8px #ffd700;
+      letter-spacing: 1px;
+      vertical-align: middle;
+      display: inline-block;
+    }
+    .draw-btn {
+      background: linear-gradient(135deg, #ffd700, #bf0a30 80%);
+      color: #222;
+      font-size: 1.4em;
+      font-weight: bold;
+      border: none;
+      border-radius: 35px;
+      padding: 18px 48px;
+      box-shadow: 0 0 30px #ffd700, 0 0 14px #fff;
+      margin: 18px 0 0 0;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 1px;
+      text-shadow: 0 0 8px #fff;
+      outline: none;
+      user-select: none;
+    }
+    .draw-btn:active {
+      transform: scale(0.98);
+      box-shadow: 0 0 10px #ffd700, 0 0 4px #fff;
+    }
+    .draw-btn:disabled {
+      background: #888;
+      color: #eee;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    .balls-history-area {
+      margin-top: 30px;
+    }
+    .balls-history-label {
+      color: #ffd700;
+      font-size: 1.1em;
+      margin-bottom: 10px;
+      letter-spacing: 1px;
+    }
+    .balls-history {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      min-height: 60px;
+    }
+    .history-ball {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #fff 60%, #ffd700 100%);
+      color: #003366;
+      font-size: 1.2em;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 10px #ffd700, 0 0 4px #fff;
+      border: 2px solid #ffd700;
+      margin: 2px 1px;
+      position: relative;
+      text-shadow: 0 0 3px #fff, 0 0 2px #ffd700;
+      transition: transform 0.2s;
+    }
+    .history-ball:last-child {
+      border: 2px solid #bf0a30;
+      background: radial-gradient(circle at 30% 30%, #fff 60%, #bf0a30 100%);
+      color: #fff;
+      transform: scale(1.1);
+      box-shadow: 0 0 18px #bf0a30, 0 0 8px #fff;
+      z-index: 2;
+    }
+    .reset-btn {
+      display: inline-block;
+      margin: 30px 0 0 0;
+      padding: 12px 28px;
+      background: linear-gradient(135deg, #ffd700, #ff8c00);
+      color: #222;
+      font-size: 1.1em;
+      font-weight: bold;
+      border-radius: 28px;
+      text-decoration: none;
+      box-shadow: 0 0 18px #ffd700, 0 0 8px #fff;
+      border: 2px solid #fff;
+      transition: all 0.2s;
+      text-align: center;
+      text-shadow: 0 0 6px #fff;
+      cursor: pointer;
+    }
+    .reset-btn:hover {
+      background: linear-gradient(135deg, #ff8c00, #ffd700);
+      color: #bf0a30;
+      box-shadow: 0 0 40px #ffd700, 0 0 16px #fff;
+      transform: scale(1.07);
+    }
+    /* Tiny player cards */
+    .players-area {
+      margin-top: 30px;
+      margin-bottom: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .players-label {
+      color: #ffd700;
+      font-size: 1.1em;
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+    .tiny-cards-row {
+      display: flex;
+      gap: 18px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .tiny-card-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .tiny-label {
+      font-size: 0.9em;
+      color: #ffd700;
+      margin-bottom: 2px;
+      text-shadow: 0 0 5px #000;
+    }
+    .tiny-bingo-card {
+      border-collapse: collapse;
+      background: rgba(255,255,255,0.07);
+      box-shadow: 0 0 8px #ffd700;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 2px;
+    }
+    .tiny-bingo-card th, .tiny-bingo-card td {
+      width: 16px; height: 16px;
+      text-align: center;
+      font-size: 0.7em;
+      font-weight: bold;
+      border: 1px solid #ffd700;
+      background: #003366;
+      color: #fff;
+      padding: 0;
+      transition: background 0.2s, color 0.2s;
+    }
+    .tiny-bingo-card th {
+      background: linear-gradient(135deg, #ffd700, #bf0a30 80%);
+      color: #222;
+      font-size: 0.7em;
+      text-shadow: 0 0 2px #fff;
+      border-bottom: 2px solid #ffd700;
+    }
+    .tiny-bingo-card .free {
+      background: #ffd700 !important;
+      color: #bf0a30 !important;
+      font-size: 0.7em;
+      letter-spacing: 1px;
+    }
+    .tiny-bingo-card .marked {
+      background: linear-gradient(135deg, #ffd700 60%, #bf0a30 100%) !important;
+      color: #222 !important;
+      box-shadow: 0 0 4px #ffd700, 0 0 2px #fff;
+      animation: neon-glow-tiny 1.2s infinite alternate;
+    }
+    @keyframes neon-glow-tiny {
+      from { box-shadow: 0 0 2px #ffd700, 0 0 1px #fff; }
+      to   { box-shadow: 0 0 8px #ffd700, 0 0 4px #fff; }
+    }
+    /* Bingo button */
+    .bingo-btn {
+      display: inline-block;
+      margin: 18px 0 0 0;
+      padding: 20px 60px;
+      background: #d00000;
+      color: #fff;
+      font-size: 2.2em;
+      font-weight: bold;
+      border-radius: 40px;
+      border: 4px solid #fff;
+      box-shadow: 0 0 30px #d00000, 0 0 12px #fff;
+      cursor: pointer;
+      text-shadow: 0 0 10px #fff, 0 0 8px #d00000;
+      letter-spacing: 3px;
+      outline: none;
+      transition: all 0.2s;
+      animation: none;
+    }
+    .bingo-btn.flashing {
+      animation: bingo-flash 0.25s alternate infinite;
+    }
+    @keyframes bingo-flash {
+      from { background: #d00000; box-shadow: 0 0 30px #d00000, 0 0 12px #fff; }
+      to   { background: #ff0000; box-shadow: 0 0 60px #ff0000, 0 0 24px #fff; }
+    }
+    @media (max-width: 700px) {
+      .bingo-machine { padding: 16px 3vw; }
+      .current-ball { width: 80px; height: 80px; font-size: 2.1em; }
+      .history-ball { width: 28px; height: 28px; font-size: 0.9em; }
+      .bingo-card th, .bingo-card td { width: 30px; height: 30px; font-size: 1em; }
+      .tiny-bingo-card th, .tiny-bingo-card td { width: 10px; height: 10px; font-size: 0.5em; }
+      .bingo-btn { font-size: 1.2em; padding: 10px 24px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Bingo Machine 🎱</h1>
+  <div class="bingo-machine">
+    <div class="bingo-card-area">
+      <div class="bingo-card-label">Your Bingo Card</div>
+      <button id="draw-card-btn" class="draw-card-btn">Draw My Card</button>
+      <div id="bingo-card-container"></div>
+    </div>
+    <div class="current-ball-area">
+      <div class="current-ball-label">Current Ball</div>
+      <div id="current-ball" class="current-ball" style="visibility:hidden;"></div>
+    </div>
+    <button id="draw-btn" class="draw-btn" disabled>Next Number</button>
+    <div class="balls-history-area">
+      <div class="balls-history-label">Balls Drawn</div>
+      <div id="balls-history" class="balls-history"></div>
+    </div>
+    <button id="reset-btn" class="reset-btn" style="display:none;">Reset Bingo Machine</button>
+    <button id="bingo-btn" class="bingo-btn" style="display:block;">BINGO!</button>
+    <div class="players-area">
+      <div class="players-label">Your Opponents</div>
+      <div class="tiny-cards-row" id="tiny-cards-row"></div>
+    </div>
+  </div>
+  <script>
+    // BINGO columns and ranges
+    const bingoCols = [
+      { letter: 'B', min: 1, max: 15 },
+      { letter: 'I', min: 16, max: 30 },
+      { letter: 'N', min: 31, max: 45 },
+      { letter: 'G', min: 46, max: 60 },
+      { letter: 'O', min: 61, max: 75 }
+    ];
+
+    // Generate all balls
+    let allBalls = [];
+    bingoCols.forEach(col => {
+      for(let n = col.min; n <= col.max; n++) {
+        allBalls.push({ letter: col.letter, number: n });
+      }
+    });
+
+    let remainingBalls = [];
+    let drawnBalls = [];
+    let bingoCard = null;
+    let aiCards = [];
+
+    const currentBallDiv = document.getElementById('current-ball');
+    const ballsHistoryDiv = document.getElementById('balls-history');
+    const drawBtn = document.getElementById('draw-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const drawCardBtn = document.getElementById('draw-card-btn');
+    const bingoCardContainer = document.getElementById('bingo-card-container');
+    const bingoBtn = document.getElementById('bingo-btn');
+    const tinyCardsRow = document.getElementById('tiny-cards-row');
+
+    function shuffle(arr) {
+      // Fisher-Yates
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function generateBingoCard() {
+      // 5x5 grid, columns B I N G O, center is "FREE"
+      const card = [];
+      bingoCols.forEach((col, colIdx) => {
+        let nums = [];
+        for (let n = col.min; n <= col.max; n++) nums.push(n);
+        nums = shuffle(nums).slice(0, 5);
+        for (let row = 0; row < 5; row++) {
+          if (!card[row]) card[row] = [];
+          card[row][colIdx] = nums[row];
+        }
+      });
+      // Center is free
+      card[2][2] = "FREE";
+      return card;
+    }
+
+    function renderBingoCard(card, calledBalls = []) {
+      let html = '<table class="bingo-card"><tr>';
+      for (const col of bingoCols) {
+        html += `<th>${col.letter}</th>`;
+      }
+      html += '</tr>';
+      for (let row = 0; row < 5; row++) {
+        html += '<tr>';
+        for (let col = 0; col < 5; col++) {
+          let val = card[row][col];
+          let classes = [];
+          if (val === "FREE") classes.push("free", "marked");
+          else if (calledBalls.some(b => b.number === val && bingoCols[col].letter === b.letter)) classes.push("marked");
+          html += `<td class="${classes.join(' ')}">${val}</td>`;
+        }
+        html += '</tr>';
+      }
+      html += '</table>';
+      bingoCardContainer.innerHTML = html;
+    }
+
+    // Render tiny AI cards at the bottom
+    function renderTinyCards(aiCards, calledBalls) {
+      tinyCardsRow.innerHTML = '';
+      aiCards.forEach((card, idx) => {
+        let html = `<div class="tiny-card-container"><div class="tiny-label">Player ${idx + 2}</div>`;
+        html += '<table class="tiny-bingo-card"><tr>';
+        for (const col of bingoCols) html += `<th>${col.letter}</th>`;
+        html += '</tr>';
+        for (let row = 0; row < 5; row++) {
+          html += '<tr>';
+          for (let col = 0; col < 5; col++) {
+            let val = card[row][col];
+            let classes = [];
+            if (val === "FREE") classes.push("free", "marked");
+            else if (calledBalls.some(b => b.number === val && bingoCols[col].letter === b.letter)) classes.push("marked");
+            html += `<td class="${classes.join(' ')}">${val}</td>`;
+          }
+          html += '</tr>';
+        }
+        html += '</table></div>';
+        tinyCardsRow.innerHTML += html;
+      });
+    }
+
+    function drawBall() {
+      if (remainingBalls.length === 0) return;
+      const idx = Math.floor(Math.random() * remainingBalls.length);
+      const ball = remainingBalls.splice(idx, 1)[0];
+      drawnBalls.push(ball);
+      showCurrentBall(ball);
+      updateHistory();
+      renderBingoCard(bingoCard, drawnBalls);
+      renderTinyCards(aiCards, drawnBalls);
+      if (remainingBalls.length === 0) {
+        drawBtn.disabled = true;
+        drawBtn.textContent = "All Balls Drawn";
+        resetBtn.style.display = '';
+      }
+    }
+
+    function showCurrentBall(ball) {
+      currentBallDiv.innerHTML = `<span class="bingo-letter">${ball.letter}</span>${ball.number}`;
+      currentBallDiv.style.visibility = 'visible';
+      // Restart animation
+      currentBallDiv.style.animation = 'none';
+      void currentBallDiv.offsetWidth; // trigger reflow
+      currentBallDiv.style.animation = null;
+    }
+
+    function updateHistory() {
+      ballsHistoryDiv.innerHTML = '';
+      drawnBalls.forEach((ball, i) => {
+        const div = document.createElement('div');
+        div.className = 'history-ball';
+        div.innerHTML = `<span class="bingo-letter">${ball.letter}</span>${ball.number}`;
+        ballsHistoryDiv.appendChild(div);
+      });
+    }
+
+    function resetMachine() {
+      remainingBalls = [...allBalls];
+      drawnBalls = [];
+      currentBallDiv.style.visibility = 'hidden';
+      ballsHistoryDiv.innerHTML = '';
+      drawBtn.disabled = false;
+      drawBtn.textContent = "Next Number";
+      resetBtn.style.display = 'none';
+      if (bingoCard) renderBingoCard(bingoCard, []);
+      renderTinyCards(aiCards, []);
+      bingoBtn.classList.remove('flashing');
+    }
+
+    drawBtn.onclick = drawBall;
+    resetBtn.onclick = resetMachine;
+
+    drawCardBtn.onclick = () => {
+      bingoCard = generateBingoCard();
+      aiCards = [generateBingoCard(), generateBingoCard(), generateBingoCard(), generateBingoCard()];
+      renderBingoCard(bingoCard, drawnBalls);
+      renderTinyCards(aiCards, drawnBalls);
+      drawBtn.disabled = false;
+      remainingBalls = [...allBalls];
+      drawnBalls = [];
+      currentBallDiv.style.visibility = 'hidden';
+      ballsHistoryDiv.innerHTML = '';
+      resetBtn.style.display = 'none';
+      bingoBtn.classList.remove('flashing');
+    };
+
+    // Bingo button flashes red when pressed
+    bingoBtn.onclick = () => {
+      bingoBtn.classList.add('flashing');
+      setTimeout(() => bingoBtn.classList.remove('flashing'), 1800);
+      // Optionally: check for real Bingo here and show a message!
+    };
+
+    // Optional: keyboard shortcut (spacebar) for next number
+    document.addEventListener('keydown', e => {
+      if ((e.key === ' ' || e.code === 'Space') && !drawBtn.disabled && bingoCard) {
+        e.preventDefault();
+        drawBall();
+      }
+    });
+
+    // Draw a card on first load for convenience
+    drawCardBtn.click();
+  </script>
+</body>
+</html>
