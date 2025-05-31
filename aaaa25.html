@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Refined Distance Tracker (Optimized for Sensitivity 2)</title>
+<style>
+  body { font-family: sans-serif; background:#222; color:#eee; margin:10px; }
+  button, input[type=range], input[type=number] {
+    padding:8px 12px; font-size:1em; margin-right:10px;
+  }
+  canvas { border:1px solid #555; background:#000; display:block; margin-top:10px; }
+  label { display:inline-block; margin-left:10px; }
+</style>
+</head>
+<body>
+
+<h1>Refined Distance Tracker</h1>
+
+<button id="requestPermission">Allow Motion Access</button>
+
+<label>Pixels per Inch: 
+  <input type="number" id="ppiInput" value="96" step="1" min="1" />
+</label>
+
+<label>
+  Sensitivity (1=Low, 10=High):
+  <input type="range" id="sensitivityRange" min="1" max="10" value="2" />
+  <span id="sensitivityValue">2</span>
+</label>
+
+<label>
+  Distance Multiplier:
+  <input type="number" id="distMultiplier" value="1" step="0.1" min="0.1" />
+</label>
+
+<button id="resetBtn">Reset</button>
+
+<p><strong>Estimated Distance (ft):</strong> <span id="distanceDisplay">0.00</span></p>
+
+<canvas id="accelCanvas" width="900" height="600"></canvas>
+
+<script>
+const canvas = document.getElementById('accelCanvas');
+const ctx = canvas.getContext('2d');
+
+// UI elements
+const ppiInput = document.getElementById('ppiInput');
+const sensitivityRange = document.getElementById('sensitivityRange');
+const sensitivityValue = document.getElementById('sensitivityValue');
+const distMultiplierInput = document.getElementById('distMultiplier');
+const distanceSpan = document.getElementById('distanceDisplay');
+
+// Configurable values
+let pixelsPerInch = parseFloat(ppiInput.value);
+let sensitivityLevel = parseInt(sensitivityRange.value);
+let distMultiplier = parseFloat(distMultiplierInput.value);
+
+// Update input values
+ppiInput.onchange = () => {
+  const val = parseFloat(ppiInput.value);
+  if (!isNaN(val) && val > 0) pixelsPerInch = val;
+};
+sensitivityRange.oninput = () => {
+  sensitivityLevel = parseInt(sensitivityRange.value);
+  sensitivityValue.textContent = sensitivityLevel;
+};
+distMultiplierInput.onchange = () => {
+  const val = parseFloat(distMultiplierInput.value);
+  if (!isNaN(val) && val > 0) distMultiplier = val;
+};
+
+// Request permission (iOS)
+document.getElementById('requestPermission').onclick = () => {
+  if (typeof DeviceMotionEvent.requestPermission === 'function') {
+    DeviceMotionEvent.requestPermission()
+      .then(res => alert('Permission: ' + res))
+      .catch(e => alert('Error: ' + e));
+  } else {
+    alert('No permission needed.');
+  }
+};
+
+// State
+let lastTimestamp = null;
+let pitch = 0, roll = 0;
+const alphaOrient = 0.98;
+
+let velocity = {x:0, y:0};
+let position = {x: canvas.width / 2, y: canvas.height / 2};
+let trail = [{...position}];
+let totalDistancePixels = 0;
+
+// Reset tracking
+document.getElementById('resetBtn').onclick = () => resetTracking();
+function resetTracking() {
+  lastTimestamp = null;
+  velocity = {x:0, y:0};
+  position = {x: canvas.width / 2, y: canvas.height / 2};
+  trail = [{...position}];
+  totalDistancePixels = 0;
+  distanceSpan.textContent = "0.00";
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+// Orientation estimate (complementary filter)
+function updateOrientation(acc, gyro, dt) {
+  const pitchAcc = Math.atan2(acc.y, acc.z);
+  const rollAcc = Math.atan2(-acc.x, Math.sqrt(acc.y ** 2 + acc.z ** 2));
+  pitch += gyro.beta * dt;
+  roll += gyro.gamma * dt;
+  pitch = alphaOrient * pitch + (1 - alphaOrient) * pitchAcc;
+  roll = alphaOrient * roll + (1 - alphaOrient) * rollAcc;
+}
+
+// Remove gravity using pitch & roll
+function removeGravity(acc, pitch, roll) {
+  const sinP = Math.sin(pitch), cosP = Math.cos(pitch);
+  const sinR = Math.sin(roll), cosR = Math.cos(roll);
+
+  const x = acc.x * cosP + acc.z * sinP;
+  const y = acc.x * sinR * sinP + acc.y * cosR - acc.z * sinR * cosP;
+  const z = -acc.x * cosR * sinP + acc.y * sinR + acc.z * cosR * cosP;
+
+  return { x, y, z: z - 9.81 }; // subtract gravity
+}
+
+// Motion listener
+window.addEventListener('devicemotion', (event) => {
+  if (!event.acceleration || !event.rotationRate) return;
+
+  const now = event.timeStamp || Date.now();
+  if (lastTimestamp === null) {
+    lastTimestamp = now;
+    return;
+  }
+
+  const dt = (now - lastTimestamp) / 1000;
+  lastTimestamp = now;
+
+  const accRaw = event.acceleration;
+  const gyroRaw = event.rotationRate;
+  const gyroRad = {
+    alpha: (gyroRaw.alpha || 0) * Math.PI / 180,
+    beta:  (gyroRaw.beta || 0)  * Math.PI / 180,
+    gamma: (gyroRaw.gamma || 0) * Math.PI / 180
+  };
+
+  updateOrientation(accRaw, gyroRad, dt);
+  const accLinear = removeGravity(accRaw, pitch, roll);
+
+  // Adjust threshold and damping based on sensitivity
+  const noiseThreshold = 0.1 * (11 - sensitivityLevel); 
+  const damping = 0.7 + (sensitivityLevel * 0.03);
+
+  const ax = Math.abs(accLinear.x) > noiseThreshold ? accLinear.x : 0;
+  const ay = Math.abs(accLinear.y) > noiseThreshold ? accLinear.y : 0;
+
+  // Apply motion
+  velocity.x = velocity.x * damping + ax * dt;
+  velocity.y = velocity.y * damping + ay * dt;
+
+  // Scale to canvas
+  const scaleFactor = pixelsPerInch * 3; // tweakable
+  position.x += velocity.x * dt * scaleFactor;
+  position.y += velocity.y * dt * scaleFactor;
+
+  // Clamp
+  position.x = Math.min(Math.max(position.x, 0), canvas.width);
+  position.y = Math.min(Math.max(position.y, 0), canvas.height);
+
+  const lastPos = trail[trail.length - 1];
+  const d = Math.hypot(position.x - lastPos.x, position.y - lastPos.y);
+  if (d > 1) {
+    trail.push({...position});
+    totalDistancePixels += d;
+  }
+
+  // Draw trail
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'purple';
+  ctx.shadowColor = 'purple';
+  ctx.shadowBlur = 4;
+  ctx.beginPath();
+  ctx.moveTo(trail[0].x, trail[0].y);
+  for (let i = 1; i < trail.length; i++) ctx.lineTo(trail[i].x, trail[i].y);
+  ctx.stroke();
+
+  // Convert to feet and display
+  const totalFeet = ((totalDistancePixels / pixelsPerInch) / 12) * distMultiplier;
+  distanceSpan.textContent = totalFeet.toFixed(2);
+});
+</script>
+
+</body>
+</html>
