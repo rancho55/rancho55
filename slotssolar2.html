@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Casino Slot Machine - Solar System Theme</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(135deg, #0f0f0f, #1a1a1a);
+      color: #ffd700;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      color: #ffd700;
+      font-size: 2.5em;
+      margin-bottom: 0.5em;
+      text-shadow: 2px 2px 4px #000;
+    }
+    .row-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+    .slot-machine {
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+      background: #222;
+      border: 5px solid #ffd700;
+      border-radius: 15px;
+      box-shadow: inset 0 0 20px #000, 0 0 20px #000;
+      margin-bottom: 15px;
+      transition: background 0.3s ease;
+    }
+    .slot-machine.win {
+      background: #444444;
+      animation: flash 0.6s ease-in-out 2;
+    }
+    @keyframes flash {
+      0%, 100% { background: #444; }
+      50% { background: #ffd700; }
+    }
+    .reel {
+      width: 100px;
+      height: 120px;
+      margin: 0 15px;
+      font-size: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #444, #222);
+      border: 4px solid #ffd700;
+      border-radius: 10px;
+      box-shadow: inset 0 0 10px #000;
+      font-family: 'Segoe UI Emoji', 'Arial Unicode MS', 'Arial', sans-serif;
+    }
+    #controls {
+      margin-top: 20px;
+    }
+    button {
+      background-color: #ffd700;
+      border: none;
+      padding: 15px 20px;
+      font-size: 1.2em;
+      border-radius: 10px;
+      cursor: pointer;
+      margin: 5px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    button:hover:not(:disabled) {
+      background-color: #e6c200;
+      transform: scale(1.05);
+    }
+    #balanceDisplay, #betDisplay {
+      font-size: 1.4em;
+      margin-top: 10px;
+    }
+    #changeBetInput {
+      width: 80px;
+      font-size: 1em;
+      text-align: center;
+    }
+    #score {
+      margin-top: 20px;
+      font-size: 1.5em;
+      color: #ffd700;
+      text-shadow: 1px 1px 2px #000;
+    }
+    #message {
+      margin-top: 15px;
+      font-size: 1.8em;
+      height: 40px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>🎰 Solar System Slot Machine 🌌</h1>
+
+<div>
+  <div id="balanceDisplay">Balance: 1000</div>
+  <div id="betDisplay">Current Bet: 10</div>
+  <label for="changeBetInput">Change Bet:</label>
+  <input type="number" id="changeBetInput" value="10" min="1" />
+  <button id="changeBetBtn">Set Bet</button>
+</div>
+
+<div id="rows-container">
+  <div class="row-container" data-row="1">
+    <div class="slot-machine" id="row1">
+      <div class="reel" id="reel1-1">☀️</div>
+      <div class="reel" id="reel1-2">🪐</div>
+      <div class="reel" id="reel1-3">🌍</div>
+    </div>
+  </div>
+  <div class="row-container" data-row="2">
+    <div class="slot-machine" id="row2">
+      <div class="reel" id="reel2-1">🔴</div>
+      <div class="reel" id="reel2-2">🌙</div>
+      <div class="reel" id="reel2-3">🌌</div>
+    </div>
+  </div>
+  <div class="row-container" data-row="3">
+    <div class="slot-machine" id="row3">
+      <div class="reel" id="reel3-1">✨</div>
+      <div class="reel" id="reel3-2">🪐</div>
+      <div class="reel" id="reel3-3">☀️</div>
+    </div>
+  </div>
+</div>
+
+<div id="controls">
+  <button id="spinRow1">Spin Row 1</button>
+  <button id="spinRow2">Spin Row 2</button>
+  <button id="spinRow3">Spin Row 3</button>
+  <button id="spinAllBtn">Spin All Rows</button>
+  <button id="resetBtn">Reset</button>
+</div>
+
+<div id="score">Score: 0</div>
+<div id="message"></div>
+
+<script>
+  const symbols = ['☀️', '🪐', '🌍', '🔴', '🌙', '🌌', '✨'];
+  const multipliers = {
+    '☀️': 3,
+    '🪐': 2,
+    '🌍': 2,
+    '🔴': 2,
+    '🌙': 2,
+    '🌌': 3,
+    '✨': 4
+  };
+
+  const reelIds = {
+    1: ['reel1-1', 'reel1-2', 'reel1-3'],
+    2: ['reel2-1', 'reel2-2', 'reel2-3'],
+    3: ['reel3-1', 'reel3-2', 'reel3-3']
+  };
+
+  let balance = 1000;
+  let currentBet = 10;
+  let spinning = false;
+
+  function updateBalanceDisplay() {
+    document.getElementById('balanceDisplay').textContent = 'Balance: ' + balance;
+  }
+  function updateBetDisplay() {
+    document.getElementById('betDisplay').textContent = 'Current Bet: ' + currentBet;
+  }
+  function showMessage(msg, color = 'gold') {
+    const msgDiv = document.getElementById('message');
+    msgDiv.textContent = msg;
+    msgDiv.style.color = color;
+  }
+  function getRandomSymbol() {
+    return symbols[Math.floor(Math.random() * symbols.length)];
+  }
+
+  function updateBalance(amount) {
+    balance += amount;
+    if (balance < 0) balance = 0;
+    updateBalanceDisplay();
+  }
+
+  document.getElementById('changeBetBtn').addEventListener('click', () => {
+    const newBet = parseInt(document.getElementById('changeBetInput').value);
+    if (!isNaN(newBet) && newBet >= 1) {
+      currentBet = newBet;
+      updateBetDisplay();
+    } else {
+      alert('Invalid bet amount!');
+    }
+  });
+
+  async function spinRow(rowNumber) {
+    const rowElement = document.getElementById(`row${rowNumber}`);
+    const reels = reelIds[rowNumber];
+    let count = 0;
+    const spinCount = 20;
+
+    return new Promise(resolve => {
+      const interval = setInterval(() => {
+        reels.forEach(id => {
+          document.getElementById(id).textContent = getRandomSymbol();
+        });
+        count++;
+        if (count >= spinCount) {
+          clearInterval(interval);
+          const finalSymbols = reels.map(id => document.getElementById(id).textContent);
+          const win = finalSymbols.every(sym => sym === finalSymbols[0]);
+          rowElement.classList.remove('win');
+          if (win) {
+            const symbol = finalSymbols[0];
+            const reward = currentBet * (multipliers[symbol] || 2);
+            updateBalance(reward);
+            showMessage(`🎉 Row ${rowNumber} Win! +${reward}`, 'gold');
+            rowElement.classList.add('win');
+          } else {
+            updateBalance(-currentBet);
+            showMessage(`Row ${rowNumber} Loss! -${currentBet}`, 'red');
+          }
+          resolve();
+        }
+      }, 50);
+    });
+  }
+
+  async function handleSpin(rows) {
+    if (spinning || balance < currentBet) return;
+    spinning = true;
+    toggleButtons(true);
+    showMessage('Spinning...');
+    await Promise.all(rows.map(r => spinRow(r)));
+    spinning = false;
+    toggleButtons(false);
+  }
+
+  function toggleButtons(disable) {
+    document.querySelectorAll('button').forEach(btn => {
+      if (btn.id !== 'resetBtn') btn.disabled = disable;
+    });
+  }
+
+  document.getElementById('spinRow1').addEventListener('click', () => handleSpin([1]));
+  document.getElementById('spinRow2').addEventListener('click', () => handleSpin([2]));
+  document.getElementById('spinRow3').addEventListener('click', () => handleSpin([3]));
+  document.getElementById('spinAllBtn').addEventListener('click', () => handleSpin([1, 2, 3]));
+
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    balance = 1000;
+    updateBalanceDisplay();
+    showMessage('');
+  });
+
+  updateBalanceDisplay();
+  updateBetDisplay();
+</script>
+</body>
+</html>

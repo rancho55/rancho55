@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Flashy Space Station Slot Machine</title>
+  <!-- Futuristic font -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      margin: 0;
+      background: radial-gradient(circle at center, #000010, #000022 90%);
+      font-family: 'Orbitron', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #00ffff;
+      user-select: none;
+      overflow: hidden;
+    }
+
+    .slot-machine {
+      background: linear-gradient(145deg, #001a26, #00334d);
+      border-radius: 30px;
+      box-shadow:
+        0 0 50px #00ffff,
+        inset 0 0 70px #004d66;
+      width: 520px;
+      padding: 50px 40px 60px;
+      text-align: center;
+      position: relative;
+      border: 4px solid #00ffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow: visible;
+    }
+
+    .slot-title {
+      font-size: 3rem;
+      letter-spacing: 5px;
+      margin-bottom: 30px;
+      color: #00ffff;
+      text-shadow:
+        0 0 15px #00ffff,
+        0 0 30px #00ffff,
+        0 0 45px #00ffff;
+      animation: neonPulse 3s ease-in-out infinite;
+      user-select: none;
+    }
+
+    @keyframes neonPulse {
+      0%, 100% {
+        text-shadow:
+          0 0 15px #00ffff,
+          0 0 30px #00ffff,
+          0 0 45px #00ffff;
+        color: #00ffff;
+      }
+      50% {
+        text-shadow:
+          0 0 30px #00ffff,
+          0 0 60px #00ffff,
+          0 0 90px #00ffff;
+        color: #a0ffff;
+      }
+    }
+
+    .space-icons {
+      position: absolute;
+      top: -60px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 3rem;
+      color: #00ffff;
+      text-shadow:
+        0 0 20px #00ffff,
+        0 0 40px #00ffff,
+        0 0 60px #00ffff;
+      user-select: none;
+      animation: floatUpDown 4s ease-in-out infinite;
+    }
+
+    @keyframes floatUpDown {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(-15px); }
+    }
+
+    .info {
+      font-size: 1.3rem;
+      margin-bottom: 25px;
+      color: #00ffff;
+      text-shadow: 0 0 8px #004d66;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 25px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      user-select: none;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 25px;
+      margin-bottom: 30px;
+      width: 100%;
+    }
+
+    button {
+      background: linear-gradient(135deg, #00ffff 0%, #004d66 100%);
+      border: none;
+      padding: 16px 40px;
+      border-radius: 30px;
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 700;
+      font-size: 1.2rem;
+      color: #001a26;
+      cursor: pointer;
+      box-shadow:
+        0 0 20px #00ffff,
+        inset 0 0 15px #004d66;
+      transition: background 0.3s ease, box-shadow 0.3s ease;
+      user-select: none;
+      flex: 1;
+      max-width: 160px;
+      position: relative;
+      overflow: visible;
+    }
+
+    button::before {
+      content: '';
+      position: absolute;
+      top: -10px; left: -10px; right: -10px; bottom: -10px;
+      border-radius: 40px;
+      box-shadow:
+        0 0 30px #00ffff,
+        0 0 60px #00ffff,
+        0 0 90px #00ffff;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    button:hover::before {
+      opacity: 1;
+    }
+
+    button:hover {
+      background: linear-gradient(135deg, #004d66 0%, #00ffff 100%);
+      box-shadow:
+        0 0 30px #00ffff,
+        inset 0 0 25px #006680;
+      color: #e0ffff;
+    }
+
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .reels {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      grid-template-rows: repeat(3, 100px);
+      gap: 20px;
+      justify-content: center;
+      perspective: 900px;
+      user-select: none;
+      width: 100%;
+    }
+
+    .reel {
+      background: linear-gradient(145deg, #003a4d, #002933);
+      border-radius: 20px;
+      border: 3px solid #00ffff;
+      width: 100px;
+      height: 100px;
+      font-size: 4rem;
+      color: #00ffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow:
+        0 0 25px #00ffff,
+        inset 0 0 30px #004d66;
+      transition: transform 0.5s ease;
+      transform-style: preserve-3d;
+      cursor: default;
+      filter: drop-shadow(0 0 6px #00ffff);
+      user-select: none;
+    }
+
+    .reel.spinning {
+      animation: spinReel 0.7s ease-in-out forwards;
+    }
+
+    @keyframes spinReel {
+      0% { transform: rotateX(0deg); }
+      50% { transform: rotateX(720deg); }
+      100% { transform: rotateX(0deg); }
+    }
+
+    .result-message {
+      font-size: 1.5rem;
+      min-height: 40px;
+      color: #00ffff;
+      text-shadow:
+        0 0 12px #004d66,
+        0 0 30px #00ffff;
+      font-weight: 800;
+      font-family: 'Orbitron', sans-serif;
+      margin-top: 15px;
+      user-select: none;
+      min-height: 48px;
+    }
+  </style>
+</head>
+<body>
+  <div class="slot-machine" role="main" aria-label="Flashy Space Station Slot Machine">
+    <div class="space-icons" aria-hidden="true">🪐🚀👾🌌🛰️</div>
+    <div class="slot-title">SPACE STATION SLOTS</div>
+    <div class="info" aria-live="polite">
+      <span>Coins: <strong id="coins">1111</strong></span>
+      <span>Bet: <strong id="bet">10</strong></span>
+    </div>
+    <div class="controls">
+      <button id="betBtn" aria-label="Change Bet Amount">Change Bet</button>
+      <button id="spinBtn" aria-label="Spin the slot machine">SPIN</button>
+    </div>
+    <div class="reels" id="reels" aria-live="polite" aria-atomic="true" aria-label="Slot reels">
+      <!-- 3x3 reels populated by JS -->
+    </div>
+    <div class="result-message" id="resultMessage" aria-live="polite" aria-atomic="true"></div>
+  </div>
+
+  <script>
+    const symbols = ["🪐", "🚀", "👾", "🌌", "🛰️", "🌠", "💫"];
+    const betOptions = [10, 25, 50, 100];
+    let betIndex = 0;
+    let bet = betOptions[betIndex];
+    let coins = 1111;
+
+    const reelsContainer = document.getElementById('reels');
+    const coinsEl = document.getElementById('coins');
+    const betEl = document.getElementById('bet');
+    const resultMessage = document.getElementById('resultMessage');
+    const spinBtn = document.getElementById('spinBtn');
+    const betBtn = document.getElementById('betBtn');
+
+    let reelEls = [];
+
+    function createGrid() {
+      reelsContainer.innerHTML = '';
+      reelEls = [];
+      for (let i = 0; i < 9; i++) {
+        const div = document.createElement('div');
+        div.className = 'reel';
+        div.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+        reelsContainer.appendChild(div);
+        reelEls.push(div);
+      }
+    }
+    createGrid();
+
+    function updateInfo() {
+      coinsEl.textContent = coins;
+      betEl.textContent = bet;
+    }
+
+    async function spinReels() {
+      if (coins < bet) {
+        resultMessage.textContent = "Insufficient coins to spin!";
+        return;
+      }
+      coins -= bet;
+      updateInfo();
+      resultMessage.textContent = "";
+
+      // Animate reels
+      reelEls.forEach(el => el.classList.add('spinning'));
+
+      // Wait for animation duration
+      await new Promise(r => setTimeout(r, 700));
+
+      // Update symbols randomly after spin
+      let results = [];
+      reelEls.forEach(el => {
+        const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+        el.textContent = symbol;
+        el.classList.remove('spinning');
+        results.push(symbol);
+      });
+
+      checkWin(results);
+    }
+
+    function checkWin(results) {
+      const lines = [
+        [0,1,2], [3,4,5], [6,7,8], // rows
+        [0,3,6], [1,4,7], [2,5,8], // columns
+        [0,4,8], [2,4,6]           // diagonals
+      ];
+      let winLines = 0;
+      let winSymbol = null;
+      lines.forEach(line => {
+        if (
+          results[line[0]] === results[line[1]] &&
+          results[line[1]] === results[line[2]]
+        ) {
+          winLines++;
+          winSymbol = results[line[0]];
+        }
+      });
+
+      if (winLines > 0) {
+        const jackpotSymbols = ["🌠", "💫"];
+        const isJackpot = jackpotSymbols.includes(winSymbol);
+        let payout = bet * 2 * winLines;
+        if (isJackpot) payout = bet * 5 * winLines;
+        coins += payout;
+        updateInfo();
+        resultMessage.textContent = isJackpot
+          ? `🚀 JACKPOT! ${winLines} line(s) of ${winSymbol}! You win ${payout} coins! 🌌`
+          : `✨ You won ${payout} coins on ${winLines} line(s)!`;
+      } else {
+        resultMessage.textContent = "No win this spin. Try again!";
+      }
+    }
+
+    spinBtn.addEventListener('click', spinReels);
+    betBtn.addEventListener('click', () => {
+      betIndex = (betIndex + 1) % betOptions.length;
+      bet = betOptions[betIndex];
+      updateInfo();
+    });
+
+    updateInfo();
+  </script>
+</body>
+</html>
