@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Casino Slot Machine</title>
+<style>
+  body {
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, #0f0f0f, #1a1a1a);
+    color: #ffd700;
+    text-align: center;
+    margin: 0;
+    padding: 20px;
+  }
+
+  h1 {
+    color: #ffd700;
+    font-size: 2.5em;
+    margin-bottom: 0.5em;
+    text-shadow: 2px 2px 4px #000;
+  }
+
+  #slot-machine {
+    display: flex;
+    justify-content: center;
+    margin: 30px 0;
+    padding: 20px;
+    background: #222;
+    border: 5px solid #ffd700;
+    border-radius: 15px;
+    box-shadow: inset 0 0 20px #000, 0 0 20px #000;
+  }
+
+  .reel {
+    width: 100px;
+    height: 120px;
+    margin: 0 15px;
+    font-size: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #444, #222);
+    border: 4px solid #ffd700;
+    border-radius: 10px;
+    box-shadow: inset 0 0 10px #000;
+    font-family: 'Segoe UI Emoji', 'Arial Unicode MS', 'Arial', sans-serif;
+    transition: all 0.2s ease;
+  }
+
+  #controls {
+    margin-top: 20px;
+  }
+
+  button {
+    background-color: #ffd700;
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.2em;
+    border-radius: 10px;
+    cursor: pointer;
+    margin: 0 15px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    transition: background 0.3s, transform 0.2s;
+  }
+
+  button:hover {
+    background-color: #e6c200;
+    transform: scale(1.05);
+  }
+
+  #score {
+    margin-top: 20px;
+    font-size: 1.5em;
+    color: #ffd700;
+    text-shadow: 1px 1px 2px #000;
+  }
+
+  #message {
+    margin-top: 15px;
+    font-size: 1.8em;
+    height: 40px;
+  }
+
+  /* Animate spinning */
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .spin {
+    animation: spin 0.5s linear;
+  }
+</style>
+</head>
+<body>
+
+<h1>🎰 Casino Slot Machine 🎲</h1>
+
+<div id="slot-machine">
+  <div class="reel" id="reel1">🍒</div>
+  <div class="reel" id="reel2">🍋</div>
+  <div class="reel" id="reel3">🔔</div>
+</div>
+
+<div id="controls">
+  <button id="spinBtn">Spin</button>
+  <button id="resetBtn">Reset Score</button>
+</div>
+
+<div id="score">Score: 0</div>
+<div id="message"></div>
+
+<script>
+  const symbols = ['🍒', '🍋', '🔔', '🍉', '⭐', '🍇', '7️⃣'];
+  const reels = [
+    document.getElementById('reel1'),
+    document.getElementById('reel2'),
+    document.getElementById('reel3')
+  ];
+
+  let score = 0;
+  let spinning = false;
+
+  // Set up Web Audio Oscillator for oscillating sound
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  const audioCtx = new AudioContext();
+  let oscillator;
+
+  function startOscillator() {
+    oscillator = audioCtx.createOscillator();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+    oscillator.connect(audioCtx.destination);
+    oscillator.start();
+  }
+
+  function stopOscillator() {
+    if (oscillator) {
+      oscillator.stop();
+      oscillator.disconnect();
+    }
+  }
+
+  function getRandomSymbol() {
+    return symbols[Math.floor(Math.random() * symbols.length)];
+  }
+
+  function updateScore(points) {
+    score += points;
+    if (score < 0) score = 0;
+    document.getElementById('score').textContent = 'Score: ' + score;
+  }
+
+  function showMessage(msg, color='gold') {
+    const msgDiv = document.getElementById('message');
+    msgDiv.textContent = msg;
+    msgDiv.style.color = color;
+  }
+
+  function spinReels() {
+    if (spinning) return;
+    spinning = true;
+    showMessage('🎰 Spinning...');
+    document.getElementById('spinBtn').disabled = true;
+
+    // Start oscillating sound
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    startOscillator();
+
+    const spinCount = 20;
+    let count = 0;
+
+    const spinInterval = setInterval(() => {
+      for (let reel of reels) {
+        reel.textContent = getRandomSymbol();
+        reel.classList.remove('spin');
+        void reel.offsetWidth;
+        reel.classList.add('spin');
+      }
+      count++;
+      if (count >= spinCount) {
+        clearInterval(spinInterval);
+        // Final symbols
+        const finalSymbols = reels.map(() => getRandomSymbol());
+        for (let i=0; i<reels.length; i++) {
+          reels[i].textContent = finalSymbols[i];
+        }
+        checkWin(finalSymbols);
+        // Stop sound
+        stopOscillator();
+        // Reset spinning flag and enable button
+        spinning = false;
+        document.getElementById('spinBtn').disabled = false;
+      }
+    }, 50);
+  }
+
+  function checkWin(finalSymbols) {
+    const allEqual = finalSymbols.every(s => s === finalSymbols[0]);
+    if (allEqual) {
+      updateScore(20);
+      showMessage('🎉 Big Win! +20 points!', 'gold');
+    } else {
+      updateScore(-5);
+      showMessage('No match! -5 points', 'red');
+    }
+  }
+
+  document.getElementById('spinBtn').addEventListener('click', spinReels);
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    score = 0;
+    document.getElementById('score').textContent = 'Score: 0';
+    showMessage('');
+  });
+</script>
+
+</body>
+</html>
