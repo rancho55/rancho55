@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Glossy Black Portfolio Gallery</title>
+  <style>
+    /* Reset & base */
+    * {
+      margin: 0; padding: 0; box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    body {
+      background: #000;
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    /* Container for the whole gallery */
+    .gallery-container {
+      position: relative;
+      max-width: 900px;
+      margin: 50px auto;
+      perspective: 1200px; /* for a subtle 3D effect */
+    }
+
+    /* Pages wrapper */
+    .pages {
+      display: flex;
+      transition: transform 0.8s ease-in-out;
+      cursor: grab;
+      user-select: none;
+    }
+
+    /* Each page */
+    .page {
+      min-width: 100%;
+      padding: 20px;
+      background: rgba(255 255 255 / 0.05); /* translucent */
+      border-radius: 20px;
+      box-shadow:
+        0 4px 20px rgba(255 255 255 / 0.1),
+        inset 0 0 50px 5px rgba(255 255 255 / 0.15);
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
+      border: 1px solid rgba(255 255 255 / 0.15);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      /* glossy shine */
+      position: relative;
+      overflow: hidden;
+    }
+    .page::before {
+      content: '';
+      position: absolute;
+      top: -40%;
+      left: -50%;
+      width: 200%;
+      height: 180%;
+      background: linear-gradient(
+        120deg,
+        rgba(255 255 255 / 0.3) 0%,
+        rgba(255 255 255 / 0.1) 50%,
+        rgba(255 255 255 / 0) 100%
+      );
+      transform: rotate(25deg);
+      animation: shine 3s infinite;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    @keyframes shine {
+      0% { transform: translateX(-100%) rotate(25deg);}
+      100% { transform: translateX(100%) rotate(25deg);}
+    }
+
+    /* Gallery images */
+    .page img {
+      max-width: 80%;
+      border-radius: 15px;
+      box-shadow: 0 0 25px 2px rgba(255 255 255 / 0.4);
+      transition: transform 0.3s ease;
+      z-index: 2;
+    }
+    .page img:hover {
+      transform: scale(1.05);
+      filter: drop-shadow(0 0 10px #0ff);
+    }
+
+    /* Captions */
+    .caption {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #0ff;
+      text-shadow:
+        0 0 10px #0ff,
+        0 0 20px #0ff;
+      z-index: 2;
+    }
+
+    /* Navigation buttons */
+    .nav-buttons {
+      margin-top: 30px;
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+    }
+    .nav-buttons button {
+      background: linear-gradient(145deg, #111, #222);
+      border: none;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      cursor: pointer;
+      box-shadow:
+        0 0 15px #0ff,
+        inset 0 0 10px #0ff;
+      color: #0ff;
+      font-size: 1.8rem;
+      transition: background 0.3s ease, box-shadow 0.3s ease;
+    }
+    .nav-buttons button:hover {
+      background: linear-gradient(145deg, #0ff, #00cccc);
+      box-shadow:
+        0 0 25px #0ff,
+        inset 0 0 20px #0ff;
+      color: #000;
+    }
+  </style>
+</head>
+<body>
+
+<div class="gallery-container">
+  <div class="pages" id="pages">
+
+
+    <div class="page">
+  <img src="https://live.staticflickr.com/65535/54563950988_116f137b1a_w_d.jpg" alt="Project 1" />
+      <div class="caption">Dd Group Project One - Futuristic UI</div>
+    </div>
+
+
+    <div class="page">
+      <img src="https://live.staticflickr.com/65535/54562842137_6ab1228fbb_w_d.jpg" alt="Project 2" />
+  <div class="caption">Project Two - Dark Theme App</div>
+    </div>
+
+
+<div class="page">
+      <img src="https://live.staticflickr.com/65535/54563879981_8ae3020df3_c_d.jpg" alt="Project 3" />
+  <div class="caption">Project Three - Dark Theme App</div>
+    </div>
+
+
+<div class="page">
+      <img src="https://live.staticflickr.com/65535/54563010182_3cd72904f6_c_d.jpg" alt="Project 4" />
+  <div class="caption">Project Four - Dark Theme App</div>
+    </div>
+
+
+<div class="page">
+      <img src="https://live.staticflickr.com/65535/54564215705_3f036600e2_c_d.jpg" alt="Project 4" />
+  <div class="caption">Project Four - Dark Theme App</div>
+    </div>
+
+
+<div class="page">
+      <img src="https://live.staticflickr.com/65535/54564207130_f2a47a5e17_c_d.jpg" alt="Project 4" />
+  <div class="caption">Project Four - Dark Theme App</div>
+    </div>
+
+
+
+<div class="page">
+      <img src="https://live.staticflickr.com/65535/54564206995_b8f2e6cc65_c_d.jpg" alt="Project 4" />
+  <div class="caption">Project Four - Dark Theme App</div>
+    </div>
+
+
+<div class="page">
+      <img src="https://live.staticflickr.com/65535/54563876201_56750f19c2_c_d.jpg" alt="Project 4" />
+  <div class="caption">Project Four - Dark Theme App</div>
+    </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <div class="page">
+      <img src="https://live.staticflickr.com/65535/54564061649_e614bc4e3d_c_d.jpg" alt="Project 10" />
+      <div class="caption">Project Ten - Creative Design</div>
+    </div>
+  </div>
+
+
+
+
+  <div class="nav-buttons">
+    <button id="prev" aria-label="Previous">&#10094;</button>
+    <button id="next" aria-label="Next">&#10095;</button>
+  </div>
+</div>
+
+<script>
+  const pages = document.getElementById('pages');
+  const totalPages = pages.children.length;
+  let currentPage = 0;
+
+  document.getElementById('next').addEventListener('click', () => {
+    currentPage = (currentPage + 1) % totalPages;
+    updateSlide();
+  });
+
+  document.getElementById('prev').addEventListener('click', () => {
+    currentPage = (currentPage - 1 + totalPages) % totalPages;
+    updateSlide();
+  });
+
+  function updateSlide() {
+    pages.style.transform = `translateX(-${currentPage * 100}%)`;
+  }
+</script>
+
+</body>
+</html>
