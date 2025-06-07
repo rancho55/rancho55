@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Voice Controlled Radio</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        max-width: 400px;
+        margin: auto;
+    }
+    select, button {
+        font-size: 1.2em;
+        margin-bottom: 15px;
+        width: 100%;
+        padding: 10px;
+    }
+    audio {
+        width: 100%;
+        margin-top: 10px;
+    }
+    #status-message {
+        margin-top: 10px;
+        color: green;
+        font-weight: bold;
+    }
+</style>
+</head>
+<body>
+
+<h2>Voice Controlled Radio</h2>
+
+<select id="station-select">
+    <option value="https://stream-relay-geo.ntslive.net/stream" >Station 1</option>
+    <option value="https://us4.internet-radio.com:8266/stream" >Station 2</option>
+    <option value="https://stream.live.vc.bbcmedia.co.uk/bbc_radio_fourlw" >Station 3</option>
+    <option value="https://icecast.omroep.nl/radio1-bb-mp3" >Station 4</option>
+    <option value="https://streaming.radionomy.com/JazzAndBlues" >Station 5</option>
+</select>
+
+<button id="start-voice">Enable Voice Control & Shake</button>
+<div id="status-message"></div>
+
+<audio id="audio-player" controls></audio>
+
+<script>
+    const audioPlayer = document.getElementById('audio-player');
+    const stationSelect = document.getElementById('station-select');
+    const startVoiceBtn = document.getElementById('start-voice');
+    const statusMessage = document.getElementById('status-message');
+
+    const stations = {
+        '1': 'https://stream-relay-geo.ntslive.net/stream',
+        '2': 'https://us4.internet-radio.com:8266/stream',
+        '3': 'https://stream.live.vc.bbcmedia.co.uk/bbc_radio_fourlw',
+        '4': 'https://icecast.omroep.nl/radio1-bb-mp3',
+        '5': 'https://streaming.radionomy.com/JazzAndBlues',
+    };
+
+    stationSelect.addEventListener('change', () => {
+        audioPlayer.src = stationSelect.value;
+        audioPlayer.play().catch(e => console.log('Play error:', e));
+    });
+
+    // Initialize audio player with the first station
+    audioPlayer.src = stationSelect.value;
+
+    // Speech Recognition
+    let recognition;
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+
+        recognition.continuous = true;
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+
+        recognition.onresult = (event) => {
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                if (event.results[i].isFinal) {
+                    const transcript = event.results[i][0].transcript.trim().toLowerCase();
+                    console.log('Voice command:', transcript);
+
+                    const playStationMatch = transcript.match(/play station (\d)/);
+                    if (playStationMatch) {
+                        const stationNumber = playStationMatch[1];
+                        if (stations[stationNumber]) {
+                            audioPlayer.src = stations[stationNumber];
+                            stationSelect.value = stations[stationNumber]; // Update dropdown
+                            audioPlayer.play().catch(e => console.log('Play error:', e));
+                            return;
+                        }
+                    }
+
+                    if (transcript.includes('play')) {
+                        audioPlayer.play().catch(e => console.log('Play error:', e));
+                    } else if (transcript.includes('pause') || transcript.includes('stop')) {
+                        audioPlayer.pause();
+                    }
+                }
+            }
+        };
+
+        recognition.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+            // Optionally, you could restart recognition here if desired
+            // if (event.error !== 'no-speech') { // Avoid infinite loop on no speech
+            //     recognition.start();
+            // }
+        };
+
+        recognition.onend = () => {
+            // Restart recognition if it stops, unless an explicit stop command was given
+            // This is a common pattern to keep listening
+            recognition.start();
+        };
+    } else {
+        alert('Speech Recognition API not supported in this browser.');
+        startVoiceBtn.disabled = true;
+        startVoiceBtn.textContent = 'Voice Control Not Supported';
+    }
+
+    // Shake detection with iOS permission request
+    let shakeThreshold = 15; // You might need to adjust this value based on your device sensitivity
+    let lastShakeTime = 0;
+    let shakeDetectionActive = false; // Flag to indicate if shake detection is active
+
+    function handleMotionEvent(event) {
+        // Ensure that acceleration data is available
+        const acc = event.accelerationIncludingGravity;
+        if (!acc || !shakeDetectionActive) return;
+
+        const totalAcc = Math.sqrt(
+            (acc.x || 0) ** 2 +
+            (acc.y || 0) ** 2 +
+            (acc.z || 0) ** 2
+        );
+
+        const now = Date.now();
+
+        // Check if the acceleration exceeds the threshold and a cool-down period has passed
+        if (totalAcc > shakeThreshold && (now - lastShakeTime) > 1000) { // 1 second cool-down
+            if (audioPlayer.paused) {
+                audioPlayer.play().catch(e => console.log('Play error:', e));
+                statusMessage.textContent = 'Shake detected: Playing!';
+            } else {
+                audioPlayer.pause();
+                statusMessage.textContent = 'Shake detected: Paused!';
+            }
+            lastShakeTime = now;
+        }
+    }
+
+    function startShakeDetection() {
+        if (
+            typeof DeviceMotionEvent !== 'undefined' &&
+            typeof DeviceMotionEvent.requestPermission === 'function'
+        ) {
+            // Request permission for iOS 13+
+            DeviceMotionEvent.requestPermission()
+                .then(permissionState => {
+                    if (permissionState === 'granted') {
+                        window.addEventListener('devicemotion', handleMotionEvent);
+                        shakeDetectionActive = true;
+                        statusMessage.textContent = 'Motion sensor access granted. Shake to Play/Pause!';
+                        console.log('Motion permission granted');
+                    } else {
+                        statusMessage.textContent = 'Motion sensor permission denied.';
+                        console.warn('Motion permission denied');
+                    }
+                })
+                .catch(error => {
+                    statusMessage.textContent = 'Error requesting motion permission.';
+                    console.error('Error requesting motion permission:', error);
+                });
+        } else {
+            // For browsers that don't require explicit permission or older iOS versions
+            window.addEventListener('devicemotion', handleMotionEvent);
+            shakeDetectionActive = true;
+            statusMessage.textContent = 'Shake detection active. Shake to Play/Pause!';
+            console.log('Motion event listener added (no explicit permission needed)');
+        }
+    }
+
+    // Combined click handler for voice and shake
+    startVoiceBtn.addEventListener('click', () => {
+        if (recognition) {
+            recognition.start();
+            startVoiceBtn.textContent = 'Listening & Shake Enabled... (Say "play station 1-5")';
+            startVoiceBtn.disabled = true; // Disable button after activation
+            statusMessage.textContent = 'Voice control enabled.';
+        }
+
+        // Always attempt to start shake detection on this user interaction
+        startShakeDetection();
+    });
+
+    // Optional: Auto-play the first station on page load
+    // audioPlayer.play().catch(e => console.log('Initial play error:', e));
+</script>
+
+</body>
+</html>
