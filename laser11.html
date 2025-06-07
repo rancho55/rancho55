@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Laser in Glass Room with Bouncing</title>
+<style>
+  body {
+    margin: 0;
+    background: #000;
+    color: #00ffe7;
+    font-family: monospace, monospace;
+    overflow: hidden;
+  }
+  #info {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: #111;
+    padding: 8px;
+    text-align: center;
+    z-index: 10;
+  }
+  button {
+    margin-left: 15px;
+    background: #222;
+    border: 1px solid #00ffe7;
+    color: #00ffe7;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 1em;
+  }
+  canvas {
+    display: block;
+    background: #000;
+  }
+</style>
+</head>
+<body>
+<div id="info">
+  Aim the laser by tilting your device (side to side).  
+  <button id="regenWallsBtn">Randomize Walls</button>
+</div>
+<canvas id="roomCanvas"></canvas>
+
+<script>
+(() => {
+  const canvas = document.getElementById('roomCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+  canvas.width = W;
+  canvas.height = H;
+
+  const MAX_REFLECTIONS = 5;  // How many bounces to calculate
+  const NUM_WALLS = 10;       // Number of random walls inside the room
+
+  // Room border walls (rectangle)
+  const borders = [
+    {a: {x: 0, y: 0}, b: {x: W, y: 0}},
+    {a: {x: W, y: 0}, b: {x: W, y: H}},
+    {a: {x: W, y: H}, b: {x: 0, y: H}},
+    {a: {x: 0, y: H}, b: {x: 0, y: 0}},
+  ];
+
+  let walls = [];
+  let laserAngle = 0;
+
+  // Generate random walls inside the room (no wall crosses the edges)
+  function generateWalls() {
+    walls = [];
+    for (let i = 0; i < NUM_WALLS; i++) {
+      const x1 = Math.random() * (W - 100) + 50;
+      const y1 = Math.random() * (H - 100) + 50;
+      const x2 = Math.random() * (W - 100) + 50;
+      const y2 = Math.random() * (H - 100) + 50;
+      walls.push({a: {x: x1, y: y1}, b: {x: x2, y: y2}});
+    }
+  }
+
+  // Ray-line segment intersection
+  // Ray: origin + direction vector (dx,dy)
+  // Segment: p1 to p2
+  // Returns: intersection point {x,y} or null
+  function intersectRaySegment(origin, direction, p1, p2) {
+    const v1 = {x: origin.x - p1.x, y: origin.y - p1.y};
+    const v2 = {x: p2.x - p1.x, y: p2.y - p1.y};
+    const v3 = {x: -direction.y, y: direction.x};
+
+    const dot = v2.x * v3.x + v2.y * v3.y;
+    if (Math.abs(dot) < 0.000001) return null; // Parallel
+
+    const t1 = (v2.x * v1.y - v2.y * v1.x) / dot;
+    const t2 = (v1.x * v3.x + v1.y * v3.y) / dot;
+
+    if (t1 >= 0 && t2 >= 0 && t2 <= 1) {
+      return {
+        x: origin.x + direction.x * t1,
+        y: origin.y + direction.y * t1,
+        dist: t1
+      };
+    }
+    return null;
+  }
+
+  // Reflect vector v around normal n
+  function reflect(v, n) {
+    // r = v - 2*(v·n)*n
+    const dot = v.x * n.x + v.y * n.y;
+    return {
+      x: v.x - 2 * dot * n.x,
+      y: v.y - 2 * dot * n.y
+    };
+  }
+
+  // Normalize vector
+  function normalize(v) {
+    const len = Math.sqrt(v.x * v.x + v.y * v.y);
+    return {x: v.x / len, y: v.y / len};
+  }
+
+  // Calculate normal of segment (perpendicular unit vector)
+  function normal(p1, p2) {
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const n = {x: -dy, y: dx};
+    return normalize(n);
+  }
+
+  // Cast laser ray with bounces
+  // Returns array of points [start, hit1, hit2, ...]
+  function castLaser(origin, direction) {
+    let points = [origin];
+    let currentOrigin = origin;
+    let currentDir = direction;
+
+    for (let i = 0; i < MAX_REFLECTIONS; i++) {
+      let closestHit = null;
+      let closestDist = Infinity;
+      let hitWall = null;
+
+      // Test all walls + borders
+      const allWalls = walls.concat(borders);
+      for (const wall of allWalls) {
+        const hit = intersectRaySegment(currentOrigin, currentDir, wall.a, wall.b);
+        if (hit && hit.dist < closestDist) {
+          closestDist = hit.dist;
+          closestHit = hit;
+          hitWall = wall;
+        }
+      }
+      if (!closestHit) break;
+
+      points.push({x: closestHit.x, y: closestHit.y});
+
+      // Reflect laser direction around wall normal
+      const n = normal(hitWall.a, hitWall.b);
+      currentDir = reflect(currentDir, n);
+      currentDir = normalize(currentDir);
+
+      currentOrigin = closestHit;
+    }
+    return points;
+  }
+
+  // Draw everything
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    // Draw walls
+    ctx.strokeStyle = '#007f7f';
+    ctx.lineWidth = 2;
+    for (const wall of walls) {
+      ctx.beginPath();
+      ctx.moveTo(wall.a.x, wall.a.y);
+      ctx.lineTo(wall.b.x, wall.b.y);
+      ctx.stroke();
+    }
+
+    // Draw borders (room)
+    ctx.strokeStyle = '#004444';
+    ctx.lineWidth = 4;
+    for (const wall of borders) {
+      ctx.beginPath();
+      ctx.moveTo(wall.a.x, wall.a.y);
+      ctx.lineTo(wall.b.x, wall.b.y);
+      ctx.stroke();
+    }
+
+    // Laser origin: center of screen
+    const origin = {x: W / 2, y: H / 2};
+
+    // Direction vector based on laserAngle
+    const dir = {x: Math.cos(laserAngle), y: Math.sin(laserAngle)};
+
+    // Cast laser and get points for bounces
+    const points = castLaser(origin, dir);
+
+    // Draw laser beam path
+    ctx.strokeStyle = '#ff0000';
+    ctx.lineWidth = 3;
+    ctx.shadowColor = 'red';
+    ctx.shadowBlur = 12;
+
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+      ctx.lineTo(points[i].x, points[i].y);
+    }
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+
+    // Draw laser origin
+    ctx.fillStyle = 'red';
+    ctx.beginPath();
+    ctx.arc(origin.x, origin.y, 8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Handle device tilt for laser angle
+  window.addEventListener('deviceorientation', (e) => {
+    if (e.gamma != null) {
+      // Map gamma (-90 to 90) to full circle (approx)
+      // Adjust to have laser point left-right from center
+      laserAngle = (e.gamma / 90) * Math.PI; 
+    }
+  });
+
+  // Button to regen walls
+  document.getElementById('regenWallsBtn').onclick = () => {
+    generateWalls();
+  };
+
+  // Initialize
+  generateWalls();
+
+  // Animate loop
+  function animate() {
+    draw();
+    requestAnimationFrame(animate);
+  }
+  animate();
+
+  // Resize canvas on window resize
+  window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+})();
+</script>
+</body>
+</html>
