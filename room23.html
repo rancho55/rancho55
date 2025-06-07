@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Room Planner - Fully Dynamic</title>
+<style>
+  /* --- Global & Body Styles --- */
+  body {
+    background: #121212; /* Even darker background */
+    color: #e0e0e0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column; /* Stack title, appContainer vertically */
+    align-items: center; /* Center horizontally */
+    min-height: 100vh;
+    box-sizing: border-box;
+  }
+
+  h2 {
+    color: #00e0ff; /* Brighter accent cyan */
+    text-shadow: 0 0 10px rgba(0, 224, 255, 0.6); /* More prominent glow */
+    margin-bottom: 30px;
+    font-size: 2.2em;
+    letter-spacing: 1px;
+  }
+
+  /* --- App Container for Map and Controls (NEW) --- */
+  #appContainer {
+    display: flex; /* Arranges mainLayout and controlPanel side-by-side */
+    gap: 30px; /* Space between map and controls */
+    justify-content: center; /* Center the entire app content */
+    width: 100%;
+    max-width: 1600px; /* Limit overall width */
+    box-sizing: border-box;
+  }
+
+  /* --- Main Layout (Map Viewport) Container --- */
+  #mainLayout {
+    position: relative; /* Needed for positioning rooms/handles/connectors absolute within its child wrapper */
+    width: 800px; /* Fixed initial viewport width */
+    height: 600px; /* Fixed initial viewport height */
+    background: #1a1a1a; /* Background for the scrollable map area */
+    border: 1px solid #333; /* Visual boundary for mainLayout */
+    border-radius: 15px;
+    padding: 0; /* No padding here, padding applied to roomContainerWrapper */
+    box-sizing: border-box;
+    overflow: auto; /* This is the scrollable viewport */
+    flex-shrink: 0; /* Prevent it from shrinking below its fixed size */
+    transition: width 0.3s ease, height 0.3s ease; /* Smooth size changes */
+  }
+
+  /* --- Inner container for rooms within mainLayout (dynamic sizing) --- */
+  #roomContainerWrapper {
+    position: relative; /* All rooms will be absolute within this */
+    /* These dimensions will be set by JS dynamically */
+    min-width: 100%; /* Ensures it's at least as wide as mainLayout's content area */
+    min-height: 100%; /* Ensures it's at least as tall as mainLayout's content area */
+    padding: 20px; /* Padding for rooms inside the wrapper */
+    box-sizing: border-box; /* Include padding in dimensions */
+  }
+
+  /* --- Room Container Class --- */
+  .room-container {
+    position: absolute; /* ALWAYS absolute within roomContainerWrapper */
+    min-width: 150px; /* Minimum width for rooms */
+    min-height: 150px; /* Minimum height for rooms */
+    width: 300px; /* Default size for new rooms */
+    height: 300px; /* Default size for new rooms */
+    background: linear-gradient(to bottom right, #202020, #303030); /* Darker, richer gradient */
+    border: 1px solid #3a3a3a; /* Darker, subtle border */
+    border-radius: 15px; /* More rounded corners */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6),
+                0 0 20px rgba(0, 224, 255, 0.15); /* Stronger glow */
+    overflow: hidden; /* Hide parts overflowing room boundary */
+    cursor: grab; /* Indicates entire room can be dragged */
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, z-index 0.2s ease; /* Smooth transition for selection */
+    z-index: 0; /* Default z-index for rooms */
+  }
+
+  /* Style for the currently selected room */
+  .room-container.selected-room {
+    border: 3px dashed #00e0ff; /* Highlight selected room */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6),
+                0 0 20px rgba(0, 224, 255, 0.5); /* Stronger glow for selected */
+    z-index: 1; /* Bring selected room to front */
+  }
+
+  /* --- Room Connector Buttons --- */
+  .room-connector {
+    position: absolute; /* Absolute within roomContainerWrapper */
+    width: 30px; /* Size of the clickable area */
+    height: 30px;
+    background-color: rgba(0, 224, 255, 0.7); /* Cyan with transparency */
+    border: 2px solid #fff;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5em; /* Icon size */
+    color: #121212;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 5; /* Above rooms but below resize handles */
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    user-select: none; /* Prevent text selection */
+  }
+
+  .room-connector:hover {
+    background-color: #00e0ff;
+    transform: scale(1.1);
+  }
+
+  /* Control Panel (containing all controls) */
+  #controlPanel {
+    display: flex;
+    flex-direction: column; /* Stack controls vertically */
+    gap: 20px; /* Space between control sections */
+    background: #1c1c1c; /* Slightly lighter than body for contrast */
+    border: 1px solid #333;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+    min-width: 280px; /* Ensure panel has enough width */
+    position: sticky; /* Keep controls visible when scrolling if mainLayout gets big */
+    top: 20px; /* Distance from top */
+    align-self: flex-start; /* Align to the start of appContainer's cross axis */
+    flex-shrink: 0; /* Prevent it from shrinking */
+  }
+
+  /* --- Control Sections Styling --- */
+  .control-section {
+    padding-bottom: 15px;
+    border-bottom: 1px dashed #282828; /* Subtle separator */
+  }
+  .control-section:last-child {
+    border-bottom: none; /* No border for the last section */
+    padding-bottom: 0;
+  }
+
+  .control-section h3 {
+    color: #00e0ff;
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.1em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* --- Parts Styling --- */
+  .room-part {
+    position: absolute; /* Relative to its parent .room-container */
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.15); /* Slightly more visible border */
+    background-color: rgba(60, 60, 60, 0.85); /* Slightly less transparent */
+    color: #e0e0e0;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: grab;
+    user-select: none;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    white-space: nowrap;
+    transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3); /* Slight text shadow */
+    z-index: 0; /* Parts are behind resize handles but above room background */
+  }
+
+  .room-part:hover {
+    transform: translateY(-3px) scale(1.01); /* More pronounced lift and slight scale */
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4), 0 0 10px rgba(0, 224, 255, 0.1);
+  }
+
+  /* Specific part default colors */
+  .wall { background-color: #444444; width: 100%; height: 10px; top: 0; left: 0; }
+  .door { background-color: #7a4d4d; width: 70px; height: 150px; }
+  .window { background-color: #5a7c9a; width: 140px; height: 100px; }
+  .bed { background-color: #654b4b; width: 100px; height: 180px; }
+  .table { background-color: #6b6b6b; width: 80px; height: 80px; }
+  .vertical-wall { background-color: #444444; width: 10px; height: 175px; }
+
+  /* --- Resize Handles --- */
+  .resize-handle {
+    width: 16px; /* Larger handles */
+    height: 16px;
+    background: #00e0ff; /* Brighter accent color */
+    border: 2px solid #fff; /* Thicker white border */
+    border-radius: 50%;
+    cursor: pointer;
+    display: none;
+    z-index: 10; /* Make sure handles are on top */
+    box-shadow: 0 0 10px rgba(0, 224, 255, 0.8); /* Stronger glow */
+    position: absolute; /* Relative to the #roomContainerWrapper */
+  }
+  /* Cursors for handles */
+  #handle-tl { cursor: nw-resize; }
+  #handle-tr { cursor: ne-resize; }
+  #handle-bl { cursor: sw-resize; }
+  #handle-br { cursor: se-resize; }
+
+
+  /* --- Control Buttons --- */
+  .controls, #resizeControls, #colorControls, .arrow-buttons-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px; /* Consistent gap */
+    justify-content: center;
+    width: 100%; /* Take full width of control panel */
+  }
+
+  .control-btn, #setWidthBtn, #setHeightBtn, #setColorBtn, .arrow-buttons button {
+    padding: 10px 20px;
+    background: #333333; /* Darker button background */
+    color: #e0e0e0;
+    border: 1px solid #555;
+    border-radius: 8px; /* More rounded */
+    cursor: pointer;
+    font-size: 15px; /* Slightly larger font */
+    font-weight: 600;
+    transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease, color 0.2s ease;
+  }
+
+  .control-btn:hover, #setWidthBtn:hover, #setHeightBtn:hover, #setColorBtn:hover, .arrow-buttons button:hover {
+    background: #00e0ff; /* Brighter accent on hover */
+    color: #121212; /* Dark text on hover */
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(0, 224, 255, 0.4);
+  }
+
+  .control-btn:active, #setWidthBtn:active, #setHeightBtn:active, #setColorBtn:active, .arrow-buttons button:active {
+    transform: translateY(0);
+    box-shadow: none;
+    background: #00b3cc; /* Slightly darker accent on active */
+  }
+
+  /* --- Input Fields --- */
+  #resizeInput {
+    width: 80px;
+    padding: 8px 12px; /* Increased padding */
+    font-size: 15px;
+    background: #282828; /* Darker input background */
+    color: #e0e0e0;
+    border: 1px solid #444;
+    border-radius: 8px;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  #resizeInput:focus, #colorInput:focus {
+    outline: none;
+    border-color: #00e0ff;
+    box-shadow: 0 0 0 3px rgba(0, 224, 255, 0.3); /* Stronger glow on focus */
+  }
+
+  /* --- Color Input Specific --- */
+  #colorInput {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 70px; /* Slightly wider */
+    height: 40px; /* Taller */
+    padding: 0;
+    border: 1px solid #444;
+    border-radius: 8px; /* More rounded */
+    background: #282828;
+    cursor: pointer;
+    overflow: hidden;
+  }
+
+  #colorInput::-webkit-color-swatch-wrapper { padding: 0; }
+  #colorInput::-webkit-color-swatch { border: none; border-radius: 7px; }
+  #colorInput::-moz-color-swatch-wrapper { padding: 0; }
+  #colorInput::-moz-color-swatch { border: none; border-radius: 7px; }
+
+
+  /* --- Joystick Container --- */
+  .joystick-container {
+    position: relative;
+    width: 140px; /* Larger */
+    height: 140px;
+    background: linear-gradient(to bottom right, #303030, #202020); /* Darker, more contrast */
+    border-radius: 50%;
+    border: 1px solid #4a4a4a;
+    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.7), 0 8px 20px rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: grab;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+
+  .joystick-container:active {
+    cursor: grabbing;
+    transform: scale(0.97);
+    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.9), 0 4px 10px rgba(0, 0, 0, 0.3);
+  }
+
+  #joystick {
+    width: 70px; /* Larger */
+    height: 70px;
+    background: linear-gradient(to top left, #6c6c6c, #8c8c6c); /* Lighter, more defined gradient */
+    border-radius: 50%;
+    border: 2px solid #aaaaaa; /* Thicker border */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.6), inset 0 0 6px rgba(255, 255, 255, 0.4);
+    transition: transform 0.05s linear;
+  }
+
+  /* --- Arrow Buttons --- */
+  .arrow-buttons {
+    display: grid;
+    grid-template-areas:
+      ". up ."
+      "left center right"
+      ". down .";
+    gap: 10px; /* More spacing */
+  }
+
+  .arrow-buttons button {
+    padding: 14px 20px; /* Even larger buttons */
+    font-size: 20px; /* Larger icons */
+  }
+  #centerBtn { visibility: hidden; }
+
+  /* --- Selected Part Outline --- */
+  .room-part.selected-part {
+    outline: 3px dashed #ff0077 !important; /* Vibrant magenta for selected */
+    outline-offset: 3px; /* Slightly offset for better visibility */
+    box-shadow: 0 0 15px rgba(255, 0, 119, 0.6); /* Glow on selected */
+  }
+  /* For input focus, keep it clear */
+  .room-part[style*="outline: 3px dashed #0f0"] {
+    outline-color: #00ffaa !important; /* Vibrant green for input focus */
+    outline-offset: 3px;
+    box-shadow: 0 0 15px rgba(0, 255, 170, 0.6);
+  }
+
+  /* --- Responsive Adjustments --- */
+  @media (max-width: 900px) {
+    #appContainer {
+      flex-direction: column; /* Stack map and controls vertically */
+      align-items: center;
+      gap: 20px;
+    }
+    #mainLayout {
+      width: 95%; /* Make map viewport take more width */
+      height: 400px; /* Set a reasonable fixed height for scrolling on mobile */
+      min-height: 400px;
+    }
+    /* roomContainerWrapper keeps its dynamic sizing */
+    .room-container {
+      /* Rooms remain position: absolute; */
+      width: 250px; /* Smaller default room size on mobile */
+      height: 250px;
+      min-width: 100px;
+      min-height: 100px;
+    }
+    #controlPanel {
+      width: 95%;
+      position: static; /* No sticky on small screens */
+      margin-top: 0; /* Gap handled by appContainer */
+      align-self: auto;
+    }
+    .joystick-container { width: 120px; height: 120px; }
+    #joystick { width: 60px; height: 60px; }
+  }
+
+  @media (max-width: 600px) {
+    body { padding: 15px; }
+    h2 { font-size: 1.8em; margin-bottom: 20px; }
+    .control-btn, #setWidthBtn, #setHeightBtn, #setColorBtn, .arrow-buttons button {
+      padding: 8px 15px;
+      font-size: 13px;
+    }
+    #resizeInput { width: 70px; padding: 6px 8px; font-size: 13px; }
+    #colorInput { width: 50px; height: 30px; }
+    .arrow-buttons button { padding: 10px 15px; font-size: 18px; }
+    .controls, #resizeControls, #colorControls, .arrow-buttons-container {
+      gap: 8px;
+    }
+  }
+
+</style>
+</head>
+<body>
+
+<h2>Room Planner - Fully Dynamic</h2>
+
+<div id="appContainer">
+    <div id="mainLayout">
+        <div id="roomContainerWrapper">
+            </div>
+    </div>
+
+    <div id="controlPanel">
+      <div class="control-section">
+        <h3>Move Selected Part</h3>
+        <div class="arrow-buttons-container" style="display: flex; align-items: center; justify-content: space-around; gap: 20px;">
+          <div class="joystick-container" id="joystickContainer">
+            <div id="joystick"></div>
+          </div>
+          <div class="arrow-buttons">
+            <button id="upBtn">▲</button>
+            <button id="leftBtn">◀</button>
+            <button id="centerBtn" style="visibility: hidden;">.</button>
+            <button id="rightBtn">▶</button>
+            <button id="downBtn">▼</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="control-section">
+        <h3>Add Parts to Selected Room</h3>
+        <div class="controls">
+          <button class="control-btn" onclick="addPart('wall')">Wall</button>
+          <button class="control-btn" onclick="addPart('door')">Door</button>
+          <button class="control-btn" onclick="addPart('window')">Window</button>
+          <button class="control-btn" onclick="addPart('bed')">Bed</button>
+          <button class="control-btn" onclick="addPart('table')">Table</button>
+          <button class="control-btn" onclick="addPart('vertical-wall')">V. Wall</button>
+          <button class="control-btn" onclick="deleteSelected()">Delete Selected Part</button>
+        </div>
+      </div>
+
+      <div class="control-section">
+        <h3>Add New Room</h3>
+        <p>Select an existing room, then click the ➕ buttons on its edges to add new rooms.</p>
+      </div>
+
+
+      <div class="control-section">
+        <h3>Resize Selected Part</h3>
+        <div id="resizeControls">
+          <input type="number" id="resizeInput" placeholder="Size (px)" />
+          <button id="setWidthBtn">Set Width</button>
+          <button id="setHeightBtn">Set Height</button>
+        </div>
+      </div>
+
+      <div class="control-section" style="border-bottom: none;">
+        <h3>Color Selected Part</h3>
+        <div id="colorControls">
+          <input type="color" id="colorInput" value="#606060" />
+          <button id="setColorBtn">Set Color</button>
+        </div>
+      </div>
+
+    </div>
+</div>
+
+<script>
+const mainLayout = document.getElementById('mainLayout');
+const roomContainerWrapper = document.getElementById('roomContainerWrapper');
+
+let selectedPart = null;
+let selectedRoom = null;
+let rooms = [];
+let roomIdCounter = 0;
+
+let currentConnectors = []; // To hold references to the currently displayed room connector elements
+
+// Store resize handles - these will now be appended to roomContainerWrapper
+const handleElems = {};
+
+function createResizeHandles() {
+  const handles = ['tl', 'tr', 'bl', 'br'];
+  handles.forEach(pos => {
+    const handle = document.createElement('div');
+    handle.className = 'resize-handle';
+    handle.id = 'handle-' + pos;
+    handle.dataset.pos = pos;
+    roomContainerWrapper.appendChild(handle); // Append handles to roomContainerWrapper
+    handleElems[pos] = handle;
+    handle.addEventListener('mousedown', startResize);
+    handle.addEventListener('touchstart', startResize, {passive:false});
+  });
+}
+createResizeHandles();
+
+// --- Fix: Update the overall size of roomContainerWrapper to encompass all rooms ---
+function updateMainLayoutSize() {
+    let maxX = 0;
+    let maxY = 0;
+    const wrapperPadding = 20; // Matches CSS padding for roomContainerWrapper
+
+    // Find the maximum extent of all rooms
+    rooms.forEach(room => {
+        const roomLeft = parseFloat(room.style.left) || 0;
+        const roomTop = parseFloat(room.style.top) || 0;
+        const roomWidth = parseFloat(room.style.width) || 0;
+        const roomHeight = parseFloat(room.style.height) || 0;
+
+        maxX = Math.max(maxX, roomLeft + roomWidth);
+        maxY = Math.max(maxY, roomTop + roomHeight);
+    });
+
+    // The wrapper's size should be at least the mainLayout's content area (clientWidth/Height)
+    // and also large enough to contain all rooms + its own padding.
+    const minWrapperWidth = mainLayout.clientWidth;
+    const minWrapperHeight = mainLayout.clientHeight;
+
+    // Set wrapper dimensions: at least minWrapper size, or rooms extent + padding
+    roomContainerWrapper.style.width = Math.max(minWrapperWidth, maxX + wrapperPadding) + 'px';
+    roomContainerWrapper.style.height = Math.max(minWrapperHeight, maxY + wrapperPadding) + 'px';
+
+    // Optional: Scroll to keep the selected room visible if it's pushed out of view
+    if (selectedRoom) {
+        const roomLeft = parseFloat(selectedRoom.style.left) || 0;
+        const roomTop = parseFloat(selectedRoom.style.top) || 0;
+        const roomWidth = parseFloat(selectedRoom.style.width) || 0;
+        const roomHeight = parseFloat(selectedRoom.style.height) || 0;
+
+        // Calculate target scroll position to center the selected room
+        const targetScrollLeft = roomLeft - (mainLayout.clientWidth / 2) + (roomWidth / 2);
+        const targetScrollTop = roomTop - (mainLayout.clientHeight / 2) + (roomHeight / 2);
+
+        // Apply scroll, clamping values to valid scroll range
+        mainLayout.scrollTo({
+            left: Math.max(0, Math.min(targetScrollLeft, mainLayout.scrollWidth - mainLayout.clientWidth)),
+            top: Math.max(0, Math.min(targetScrollTop, mainLayout.scrollHeight - mainLayout.clientHeight)),
+            behavior: 'smooth'
+        });
+    }
+}
+
+// --- Create a new room container ---
+function createRoom(x, y, width = 300, height = 300) {
+  const room = document.createElement('div');
+  room.className = 'room-container';
+  room.id = 'room-' + roomIdCounter++;
+  room.style.left = Math.round(x) + 'px'; // Rounding positions
+  room.style.top = Math.round(y) + 'px';
+  room.style.width = Math.round(width) + 'px';
+  room.style.height = Math.round(height) + 'px';
+
+  let isDraggingRoom = false;
+  let roomOffsetX, roomOffsetY;
+
+  room.addEventListener('mousedown', (e) => {
+    if (e.target === room || e.target.classList.contains('room-container')) {
+      e.stopPropagation();
+      isDraggingRoom = true;
+      selectRoom(room);
+      const rect = room.getBoundingClientRect();
+      const wrapperRect = roomContainerWrapper.getBoundingClientRect();
+      roomOffsetX = e.clientX - (rect.left - wrapperRect.left);
+      roomOffsetY = e.clientY - (rect.top - wrapperRect.top);
+      document.addEventListener('mousemove', doDragRoom);
+      document.addEventListener('mouseup', endDragRoom);
+      document.addEventListener('touchmove', doTouchDragRoom, {passive:false});
+      document.addEventListener('touchend', endTouchRoom);
+    }
+  });
+
+  function doDragRoom(e) {
+    if (!isDraggingRoom) return;
+    let clientX, clientY;
+    if (e.type.startsWith('touch')) {
+      e.preventDefault();
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+
+    const wrapperRect = roomContainerWrapper.getBoundingClientRect();
+    const wrapperPadding = 20; // Must match CSS padding
+
+    let newLeft = clientX - wrapperRect.left - roomOffsetX;
+    let newTop = clientY - wrapperRect.top - roomOffsetY;
+
+    // Constrain room movement within roomContainerWrapper boundaries
+    newLeft = Math.max(wrapperPadding, newLeft);
+    newTop = Math.max(wrapperPadding, newTop);
+
+    room.style.left = Math.round(newLeft) + 'px';
+    room.style.top = Math.round(newTop) + 'px';
+
+    updateMainLayoutSize();
+    updateRoomConnectors();
+  }
+
+  function doTouchDragRoom(e) { e.preventDefault(); doDragRoom(e); }
+  function endDragRoom() {
+    isDraggingRoom = false;
+    document.removeEventListener('mousemove', doDragRoom);
+    document.removeEventListener('mouseup', endDragRoom);
+    document.removeEventListener('touchmove', doTouchDragRoom);
+    document.removeEventListener('touchend', endTouchRoom);
+  }
+  function endTouchRoom() { endDragRoom(); }
+
+
+  room.addEventListener('click', (e) => {
+    e.stopPropagation();
+    selectRoom(room);
+  });
+
+  roomContainerWrapper.appendChild(room);
+  rooms.push(room);
+  selectRoom(room);
+  updateMainLayoutSize(); // Update layout size after adding new room
+  return room;
+}
+
+// --- Select a room ---
+function selectRoom(roomElem) {
+  if (selectedRoom) {
+    selectedRoom.classList.remove('selected-room');
+  }
+  selectedRoom = roomElem;
+  if (selectedRoom) {
+    selectedRoom.classList.add('selected-room');
+  }
+  selectPart(null); // Deselect any part when a new room is selected (or room is selected)
+  updateRoomConnectors(); // Update or hide connectors based on selection
+}
+
+// --- Create/Update room connection buttons ---
+function updateRoomConnectors() {
+    // Clear previous connectors
+    currentConnectors.forEach(conn => conn.remove());
+    currentConnectors = [];
+
+    if (!selectedRoom) return;
+
+    const directions = ['north', 'east', 'south', 'west'];
+    const refRoomLeft = parseFloat(selectedRoom.style.left) || 0;
+    const refRoomTop = parseFloat(selectedRoom.style.top) || 0;
+    const refRoomWidth = parseFloat(selectedRoom.style.width) || 0;
+    const refRoomHeight = parseFloat(selectedRoom.style.height) || 0;
+
+    const connectorSize = 30; // From CSS
+    const connectorOffset = connectorSize / 2; // To center the connector on the edge
+
+    directions.forEach(direction => {
+        const connector = document.createElement('div');
+        connector.className = 'room-connector';
+        connector.textContent = '➕'; // Plus symbol for adding
+        connector.style.width = connector.style.height = connectorSize + 'px';
+
+        // Calculate absolute position relative to roomContainerWrapper
+        let connX, connY;
+        switch (direction) {
+            case 'north':
+                connX = refRoomLeft + (refRoomWidth / 2) - connectorOffset;
+                connY = refRoomTop - connectorOffset;
+                break;
+            case 'east':
+                connX = refRoomLeft + refRoomWidth - connectorOffset;
+                connY = refRoomTop + (refRoomHeight / 2) - connectorOffset;
+                break;
+            case 'south':
+                connX = refRoomLeft + (refRoomWidth / 2) - connectorOffset;
+                connY = refRoomTop + refRoomHeight - connectorOffset;
+                break;
+            case 'west':
+                connX = refRoomLeft - connectorOffset;
+                connY = refRoomTop + (refRoomHeight / 2) - connectorOffset;
+                break;
+        }
+
+        connector.style.left = Math.round(connX) + 'px';
+        connector.style.top = Math.round(connY) + 'px';
+        connector.dataset.direction = direction; // Store direction for click handler
+        connector.addEventListener('click', (e) => {
+            e.stopPropagation(); // Crucial: prevent room deselection/drag
+            addRoomAdjacent(e.target.dataset.direction);
+        });
+
+        roomContainerWrapper.appendChild(connector);
+        currentConnectors.push(connector);
+    });
+}
+
+// --- Add a new room adjacent to the selected one (NSEW) ---
+function addRoomAdjacent(direction) {
+  if (!selectedRoom) {
+    alert('Please select an existing room to connect to!');
+    return;
+  }
+
+  const refRoom = selectedRoom;
+  const refRoomLeft = parseFloat(refRoom.style.left) || 0;
+  const refRoomTop = parseFloat(refRoom.style.top) || 0;
+  const refRoomWidth = parseFloat(refRoom.style.width) || 0;
+  const refRoomHeight = parseFloat(refRoom.style.height) || 0;
+
+  const newRoomWidth = 300;
+  const newRoomHeight = 300;
+  const roomGap = 0;
+
+  let newX, newY;
+  const wrapperPadding = 20;
+
+  switch (direction) {
+    case 'north':
+      newY = refRoomTop - newRoomHeight - roomGap;
+      newX = refRoomLeft;
+      break;
+    case 'east':
+      newX = refRoomLeft + refRoomWidth + roomGap;
+      newY = refRoomTop;
+      break;
+    case 'south':
+      newY = refRoomTop + refRoomHeight + roomGap;
+      newX = refRoomLeft;
+      break;
+    case 'west':
+      newX = refRoomLeft - newRoomWidth - roomGap;
+      newY = refRoomTop;
+      break;
+    default:
+      console.error("Invalid direction for adding room.");
+      return;
+  }
+
+  // Ensure new room is not placed outside wrapperPadding
+  newX = Math.max(wrapperPadding, newX);
+  newY = Math.max(wrapperPadding, newY);
+
+
+  createRoom(newX, newY, newRoomWidth, newRoomHeight);
+}
+
+// --- INITIALIZE: Create the first room when the page loads ---
+document.addEventListener('DOMContentLoaded', () => {
+  createRoom(50, 50, 400, 400); // Create the first room at (50,50) with 400x400 size
+  updateMainLayoutSize(); // Ensure initial layout size is correct
+});
+
+
+function showResizeHandles() {
+  if (!selectedPart) {
+    hideResizeHandles();
+    return;
+  }
+
+  const partLeft = parseFloat(selectedPart.style.left) || 0;
+  const partTop = parseFloat(selectedPart.style.top) || 0;
+  const partWidth = parseFloat(selectedPart.style.width) || 0;
+  const partHeight = parseFloat(selectedPart.style.height) || 0;
+
+  const parentRoom = selectedPart.closest('.room-container');
+  if (!parentRoom) return;
+  const parentRoomLeft = parseFloat(parentRoom.style.left) || 0;
+  const parentRoomTop = parseFloat(parentRoom.style.top) || 0;
+
+  const handleSize = parseFloat(getComputedStyle(handleElems.tl).width) / 2;
+
+  for (let p in handleElems) {
+    handleElems[p].style.display = 'block';
+  }
+
+  handleElems.tl.style.top = Math.round(parentRoomTop + partTop - handleSize) + 'px';
+  handleElems.tl.style.left = Math.round(parentRoomLeft + partLeft - handleSize) + 'px';
+
+  handleElems.tr.style.top = Math.round(parentRoomTop + partTop - handleSize) + 'px';
+  handleElems.tr.style.left = Math.round(parentRoomLeft + partLeft + partWidth - handleSize) + 'px';
+
+  handleElems.bl.style.top = Math.round(parentRoomTop + partTop + partHeight - handleSize) + 'px';
+  handleElems.bl.style.left = Math.round(parentRoomLeft + partLeft - handleSize) + 'px';
+
+  handleElems.br.style.top = Math.round(parentRoomTop + partTop + partHeight - handleSize) + 'px';
+  handleElems.br.style.left = Math.round(parentRoomLeft + partLeft + partWidth - handleSize) + 'px';
+}
+
+function hideResizeHandles() {
+  for (let p in handleElems) handleElems[p].style.display = 'none';
+}
+
+function selectPart(part) {
+  if (selectedPart) {
+    selectedPart.classList.remove('selected-part');
+  }
+  selectedPart = part;
+  if (selectedPart) {
+    selectedPart.classList.add('selected-part');
+    const parentRoom = selectedPart.closest('.room-container');
+    if (parentRoom && parentRoom !== selectedRoom) {
+        selectRoom(parentRoom);
+    } else {
+        updateRoomConnectors();
+    }
+    showResizeHandles();
+    updateInputSize();
+    updateColorInput();
+  } else {
+    hideResizeHandles();
+    resizeInput.value = '';
+    colorInput.value = '#606060';
+    updateRoomConnectors();
+  }
+}
+
+function addPart(type) {
+  if (!selectedRoom) {
+    alert('Please select a room first to add parts to it!');
+    return;
+  }
+
+  const part = document.createElement('div');
+  part.className = 'room-part ' + type;
+  part.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+  part.style.left = '10px';
+  part.style.top = '10px';
+
+  if (!part.style.backgroundColor || getComputedStyle(part).backgroundColor.includes('rgba(0, 0, 0, 0)')) {
+      part.style.backgroundColor = '#606060';
+  }
+
+  selectedRoom.appendChild(part);
+
+  let dragging = false;
+  let offsetX, offsetY;
+
+  function startDrag(e) {
+    if (e.target !== part) return;
+    e.stopPropagation();
+    dragging = true;
+    selectPart(part);
+    const rect = part.getBoundingClientRect();
+    if (e.type.startsWith('touch')) {
+      offsetX = e.touches[0].clientX - rect.left;
+      offsetY = e.touches[0].clientY - rect.top;
+    } else {
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+    }
+    document.addEventListener('mousemove', doDrag);
+    document.addEventListener('mouseup', endDrag);
+    document.addEventListener('touchmove', doTouchDrag, {passive:false});
+    document.addEventListener('touchend', endTouch);
+  }
+
+  function doDrag(e) {
+    if (!dragging || !selectedPart) return;
+    let clientX, clientY;
+    if (e.type.startsWith('touch')) {
+      e.preventDefault();
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+
+    const parentRoom = selectedPart.closest('.room-container');
+    if (!parentRoom) return;
+
+    const roomRect = parentRoom.getBoundingClientRect();
+    let newLeft = clientX - roomRect.left - offsetX;
+    let newTop = clientY - roomRect.top - offsetY;
+
+    newLeft = Math.max(0, Math.min(newLeft, parentRoom.clientWidth - selectedPart.offsetWidth));
+    newTop = Math.max(0, Math.min(newTop, parentRoom.clientHeight - selectedPart.offsetHeight));
+
+    selectedPart.style.left = Math.round(newLeft) + 'px';
+    selectedPart.style.top = Math.round(newTop) + 'px';
+    showResizeHandles();
+  }
+
+  function doTouchDrag(e) { e.preventDefault(); doDrag(e); }
+  function endDrag() {
+    dragging = false;
+    document.removeEventListener('mousemove', doDrag);
+    document.removeEventListener('mouseup', endDrag);
+    document.removeEventListener('touchmove', doTouchDrag);
+    document.removeEventListener('touchend', endTouch);
+  }
+  function endTouch() { endDrag(); }
+
+  part.addEventListener('mousedown', startDrag);
+  part.addEventListener('touchstart', startDrag, {passive:false});
+  part.addEventListener('click', (e) => {
+    e.stopPropagation();
+    selectPart(part);
+  });
+}
+
+// Deselect when clicking outside a room or a part, but NOT on controls
+document.body.addEventListener('click', (e) => {
+  const controlPanel = document.getElementById('controlPanel');
+  const isClickInsideControls = (controlPanel && controlPanel.contains(e.target));
+  const isClickInsideMainLayout = mainLayout.contains(e.target);
+
+  if (!isClickInsideControls && (!isClickInsideMainLayout || (isClickInsideMainLayout && !e.target.closest('.room-container') && !e.target.closest('.room-connector')))) {
+    selectPart(null);
+    selectRoom(null);
+  }
+});
+
+
+let currentResizeHandle = null;
+let startX, startY, startWidth, startHeight, startLeft, startTop;
+
+function startResize(e) {
+  e.stopPropagation();
+  e.preventDefault();
+  if (!selectedPart) return;
+
+  currentResizeHandle = e.target.dataset.pos;
+  const partStyle = getComputedStyle(selectedPart);
+  startWidth = parseFloat(partStyle.width) || 0;
+  startHeight = parseFloat(partStyle.height) || 0;
+  startLeft = parseFloat(partStyle.left) || 0;
+  startTop = parseFloat(partStyle.top) || 0;
+
+  if (e.type.startsWith('touch')) {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  } else {
+    startX = e.clientX;
+    startY = e.clientY;
+  }
+
+  document.addEventListener('mousemove', doResize);
+  document.addEventListener('mouseup', endResize);
+  document.addEventListener('touchmove', doTouchResize, {passive:false});
+  document.addEventListener('touchend', endResize);
+}
+
+function doResize(e) {
+  if (!currentResizeHandle || !selectedPart) return;
+  let clientX, clientY;
+  if (e.type.startsWith('touch')) {
+    e.preventDefault();
+    clientX = e.touches[0].clientX;
+    clientY = e.touches[0].clientY;
+  } else {
+    clientX = e.clientX;
+    clientY = e.clientY;
+  }
+  const deltaX = clientX - startX;
+  const deltaY = clientY - startY;
+
+  let newWidth = startWidth;
+  let newHeight = startHeight;
+  let newLeft = startLeft;
+  let newTop = startTop;
+
+  const minSize = 10;
+
+  const parentRoom = selectedPart.closest('.room-container');
+  if (!parentRoom) return;
+
+  const roomW = parentRoom.clientWidth;
+  const roomH = parentRoom.clientHeight;
+
+  if (currentResizeHandle.includes('r')) {
+    newWidth = Math.max(minSize, startWidth + deltaX);
+  }
+  if (currentResizeHandle.includes('l')) {
+    newWidth = Math.max(minSize, startWidth - deltaX);
+    newLeft = startLeft + deltaX;
+  }
+  if (currentResizeHandle.includes('b')) {
+    newHeight = Math.max(minSize, startHeight + deltaY);
+  }
+  if (currentResizeHandle.includes('t')) {
+    newHeight = Math.max(minSize, startHeight - deltaY);
+    newTop = startTop + deltaY;
+  }
+
+  newLeft = Math.max(0, newLeft);
+  newTop = Math.max(0, newTop);
+
+  if (newLeft + newWidth > roomW) {
+    newWidth = roomW - newLeft;
+  }
+  if (newTop + newHeight > roomH) {
+    newHeight = roomH - newTop;
+  }
+  if (newWidth < minSize) { newWidth = minSize; }
+  if (newHeight < minSize) { newHeight = minSize; }
+
+
+  selectedPart.style.width = Math.round(newWidth) + 'px';
+  selectedPart.style.height = Math.round(newHeight) + 'px';
+  selectedPart.style.left = Math.round(newLeft) + 'px';
+  selectedPart.style.top = Math.round(newTop) + 'px';
+
+  showResizeHandles();
+  updateInputSize();
+}
+
+function doTouchResize(e) { e.preventDefault(); doResize(e); }
+function endResize() {
+  document.removeEventListener('mousemove', doResize);
+  document.removeEventListener('mouseup', endResize);
+  document.removeEventListener('touchmove', doTouchResize);
+  document.removeEventListener('touchend', endResize);
+  currentResizeHandle = null;
+}
+
+function deleteSelected() {
+  if (selectedPart) {
+    selectedPart.parentNode.removeChild(selectedPart);
+    selectPart(null);
+  }
+}
+
+// -------- Joystick control --------
+const joystick = document.getElementById('joystick');
+const joystickContainer = document.getElementById('joystickContainer');
+
+let isJoystickActive = false;
+let joystickStartX, joystickStartY;
+const maxRadius = 40;
+let moveX = 0, moveY = 0;
+let moveIntervalId = null;
+
+function resetJoystick() {
+  joystick.style.transform = 'translate(-50%, -50%) translate(0, 0)';
+  moveX = 0;
+  moveY = 0;
+}
+
+function startJoystick(e) {
+  if (!selectedPart) { alert('Select a part first!'); return; }
+  e.preventDefault();
+
+  const containerRect = joystickContainer.getBoundingClientRect();
+  if (e.type.startsWith('touch')) {
+    joystickStartX = e.touches[0].clientX - containerRect.left;
+    joystickStartY = e.touches[0].clientY - containerRect.top;
+  } else {
+    joystickStartX = e.clientX - containerRect.left;
+    joystickStartY = e.clientY - containerRect.top;
+  }
+
+  isJoystickActive = true;
+  if (moveIntervalId) clearInterval(moveIntervalId);
+  moveIntervalId = setInterval(moveSelectedPart, 20);
+}
+
+function handleJoystickMove(e) {
+  if (!isJoystickActive) return;
+  e.preventDefault();
+
+  const containerRect = joystickContainer.getBoundingClientRect();
+  let currentX, currentY;
+  if (e.type.startsWith('touch')) {
+    currentX = e.touches[0].clientX - containerRect.left;
+    currentY = e.touches[0].clientY - containerRect.top;
+  } else {
+    currentX = e.clientX;
+    currentY = e.clientY;
+  }
+
+  const deltaX = currentX - (containerRect.width / 2);
+  const deltaY = currentY - (containerRect.height / 2);
+
+  const dist = Math.hypot(deltaX, deltaY);
+  const angle = Math.atan2(deltaY, deltaX);
+
+  const limitedX = Math.cos(angle) * Math.min(dist, maxRadius);
+  const limitedY = Math.sin(angle) * Math.min(dist, maxRadius);
+
+  joystick.style.transform = `translate(-50%, -50%) translate(${limitedX}px, ${limitedY}px)`;
+
+  moveX = limitedX / maxRadius;
+  moveY = limitedY / maxRadius;
+}
+
+function endJoystick() {
+  if (isJoystickActive) {
+    isJoystickActive = false;
+    clearInterval(moveIntervalId);
+    resetJoystick();
+  }
+}
+
+function moveSelectedPart() {
+  if (!selectedPart || (moveX === 0 && moveY === 0)) return;
+  let left = parseFloat(getComputedStyle(selectedPart).left) || 0;
+  let top = parseFloat(getComputedStyle(selectedPart).top) || 0;
+  const step = 5;
+
+  left += moveX * step;
+  top += moveY * step;
+
+  const parentRoom = selectedPart.closest('.room-container');
+  if (!parentRoom) return;
+
+  const roomW = parentRoom.clientWidth;
+  const roomH = parentRoom.clientHeight;
+  const partW = selectedPart.offsetWidth;
+  const partH = selectedPart.offsetHeight;
+
+  left = Math.max(0, Math.min(left, roomW - partW));
+  top = Math.max(0, Math.min(top, roomH - partH));
+
+  selectedPart.style.left = Math.round(left) + 'px';
+  selectedPart.style.top = Math.round(top) + 'px';
+  showResizeHandles();
+}
+
+// Joystick Event listeners
+joystickContainer.addEventListener('mousedown', startJoystick);
+joystickContainer.addEventListener('touchstart', startJoystick, {passive:false});
+document.addEventListener('mousemove', handleJoystickMove);
+document.addEventListener('touchmove', handleJoystickMove, {passive:false});
+document.addEventListener('mouseup', endJoystick);
+document.addEventListener('touchend', endJoystick);
+
+// Arrow buttons for movement
+document.getElementById('upBtn').onclick = () => moveObject('up');
+document.getElementById('downBtn').onclick = () => moveObject('down');
+document.getElementById('leftBtn').onclick = () => moveObject('left');
+document.getElementById('rightBtn').onclick = () => moveObject('right');
+
+function moveObject(direction) {
+  if (!selectedPart) { alert('Select a part first!'); return; }
+  let left = parseFloat(getComputedStyle(selectedPart).left) || 0;
+  let top = parseFloat(getComputedStyle(selectedPart).top) || 0;
+
+  const step = 10;
+
+  if (direction === 'up') top -= step;
+  if (direction === 'down') top += step;
+  if (direction === 'left') left -= step;
+  if (direction === 'right') left += step;
+
+  const parentRoom = selectedPart.closest('.room-container');
+  if (!parentRoom) return;
+
+  const roomW = parentRoom.clientWidth;
+  const roomH = parentRoom.clientHeight;
+  const partW = selectedPart.offsetWidth;
+  const partH = selectedPart.offsetHeight;
+
+  left = Math.max(0, Math.min(left, roomW - partW));
+  top = Math.max(0, Math.min(top, roomH - partH));
+
+  selectedPart.style.left = Math.round(left) + 'px';
+  selectedPart.style.top = Math.round(top) + 'px';
+  showResizeHandles();
+}
+
+// Keyboard support for movement and deletion
+document.addEventListener('keydown', (e) => {
+  if (document.activeElement !== resizeInput && document.activeElement !== colorInput) {
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+      e.preventDefault();
+      moveObject(e.key.replace('Arrow','').toLowerCase());
+    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      deleteSelected();
+    }
+  }
+});
+
+// -------- Pixel input resize --------
+const resizeInput = document.getElementById('resizeInput');
+const setWidthBtn = document.getElementById('setWidthBtn');
+const setHeightBtn = document.getElementById('setHeightBtn');
+
+function applyResize(dimension) {
+  if (selectedPart && resizeInput.value !== '') {
+    const val = parseInt(resizeInput.value);
+    const minSize = 10;
+    if (!isNaN(val) && val >= minSize) {
+      let currentLeft = parseFloat(getComputedStyle(selectedPart).left) || 0;
+      let currentTop = parseFloat(getComputedStyle(selectedPart).top) || 0;
+
+      const parentRoom = selectedPart.closest('.room-container');
+      if (!parentRoom) return;
+
+      const roomW = parentRoom.clientWidth;
+      const roomH = parentRoom.clientHeight;
+
+      if (dimension === 'width') {
+        let newWidth = val;
+        if (currentLeft + newWidth > roomW) {
+          newWidth = roomW - currentLeft;
+        }
+        selectedPart.style.width = Math.round(newWidth) + 'px';
+      } else if (dimension === 'height') {
+        let newHeight = val;
+        if (currentTop + newHeight > roomH) {
+          newHeight = roomH - currentTop;
+        }
+        selectedPart.style.height = Math.round(newHeight) + 'px';
+      }
+      showResizeHandles();
+      updateInputSize();
+    } else if (!isNaN(val) && val < minSize) {
+        alert('Size must be at least ' + minSize + 'px.');
+    }
+  }
+}
+
+setWidthBtn.onclick = () => applyResize('width');
+setHeightBtn.onclick = () => applyResize('height');
+
+resizeInput.addEventListener('focus', () => {
+  if (selectedPart) {
+    selectedPart.style.outline = '3px dashed #00ffaa';
+  }
+});
+
+resizeInput.addEventListener('blur', () => {
+  if (selectedPart) {
+    selectedPart.classList.add('selected-part');
+  }
+});
+
+resizeInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    applyResize('width');
+    resizeInput.blur();
+  }
+});
+
+function updateInputSize() {
+  if (selectedPart) {
+    resizeInput.value = Math.round(parseFloat(getComputedStyle(selectedPart).width));
+  } else {
+    resizeInput.value = '';
+  }
+}
+
+// -------- Color Selector --------
+const colorInput = document.getElementById('colorInput');
+const setColorBtn = document.getElementById('setColorBtn');
+
+setColorBtn.onclick = () => {
+  if (selectedPart) {
+    selectedPart.style.backgroundColor = colorInput.value;
+  } else {
+    alert('Select a part first to change its color!');
+  }
+};
+
+colorInput.addEventListener('input', () => {
+  if (selectedPart) {
+    selectedPart.style.backgroundColor = colorInput.value;
+  }
+});
+
+function updateColorInput() {
+  if (selectedPart) {
+    const computedColor = getComputedStyle(selectedPart).backgroundColor;
+    const rgbMatch = computedColor.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+
+    if (rgbMatch) {
+      const toHex = (c) => ('0' + parseInt(c).toString(16)).slice(-2);
+      const hexColor = '#' + toHex(rgbMatch[1]) + toHex(rgbMatch[2]) + toHex(rgbMatch[3]);
+      colorInput.value = hexColor;
+    } else {
+      colorInput.value = selectedPart.style.backgroundColor || '#606060';
+    }
+  } else {
+      colorInput.value = '#606060';
+  }
+}
+</script>
+</body>
+</html>
