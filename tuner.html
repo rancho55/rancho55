@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real  Tuner </title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .tuner-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #ccc;
+            font-size: 1.1rem;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #4ecdc4, #44a08d);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(78, 205, 196, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .tuner-display {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .frequency-display {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #4ecdc4;
+            margin-bottom: 10px;
+        }
+
+        .note-display {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+
+        .cents-display {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+
+        .tuning-indicator {
+            width: 100%;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 30px;
+            position: relative;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .tuning-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcf7f);
+            border-radius: 30px;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+
+        .tuning-needle {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            width: 4px;
+            background: #fff;
+            border-radius: 2px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+            transition: left 0.2s ease;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .string-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .string-btn {
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid transparent;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .string-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .string-btn.active {
+            border-color: #4ecdc4;
+            background: rgba(78, 205, 196, 0.2);
+        }
+
+        .status {
+            text-align: center;
+            font-size: 1.2rem;
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .status.in-tune {
+            background: rgba(107, 207, 127, 0.2);
+            color: #6bcf7f;
+        }
+
+        .status.sharp {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff6b6b;
+        }
+
+        .status.flat {
+            background: rgba(255, 217, 61, 0.2);
+            color: #ffd93d;
+        }
+
+        .mic-status {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div class="tuner-container">
+        <div class="header">
+            <h1>🎸 Guitar Tuner</h1>
+            <p>Professional Acoustic Guitar Tuner</p>
+        </div>
+
+        <div class="controls">
+            <button id="startBtn" class="btn btn-primary">Start Tuning</button>
+            <button id="stopBtn" class="btn btn-secondary" disabled>Stop</button>
+        </div>
+
+        <div class="tuner-display">
+            <div class="frequency-display" id="frequency">0.0 Hz</div>
+            <div class="note-display" id="note">-</div>
+            <div class="cents-display" id="cents">0 cents</div>
+            
+            <div class="tuning-indicator">
+                <div class="tuning-bar" id="tuningBar"></div>
+                <div class="tuning-needle" id="tuningNeedle"></div>
+            </div>
+        </div>
+
+        <div class="string-buttons">
+            <div class="string-btn" data-string="E4" data-freq="329.63">E (1st) - 329.63 Hz</div>
+            <div class="string-btn" data-string="B3" data-freq="246.94">B (2nd) - 246.94 Hz</div>
+            <div class="string-btn" data-string="G3" data-freq="196.00">G (3rd) - 196.00 Hz</div>
+            <div class="string-btn" data-string="D3" data-freq="146.83">D (4th) - 146.83 Hz</div>
+            <div class="string-btn" data-string="A2" data-freq="110.00">A (5th) - 110.00 Hz</div>
+            <div class="string-btn" data-string="E2" data-freq="82.41">E (6th) - 82.41 Hz</div>
+        </div>
+
+        <div class="status" id="status">Click "Start Tuning" to begin</div>
+        <div class="mic-status" id="micStatus">Microphone: Not active</div>
+    </div>
+
+    <script>
+        let audioContext;
+        let analyser;
+        let microphone;
+        let dataArray;
+        let isListening = false;
+        let animationId;
+        let currentTargetFreq = null;
+
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const frequencyDisplay = document.getElementById('frequency');
+        const noteDisplay = document.getElementById('note');
+        const centsDisplay = document.getElementById('cents');
+        const statusDisplay = document.getElementById('status');
+        const micStatus = document.getElementById('micStatus');
+        const tuningNeedle = document.getElementById('tuningNeedle');
+        const stringButtons = document.querySelectorAll('.string-btn');
+
+        // Note frequencies (12-tone equal temperament)
+        const noteFrequencies = {
+            'C': [16.35, 32.70, 65.41, 130.81, 261.63, 523.25, 1046.50],
+            'C#': [17.32, 34.65, 69.30, 138.59, 277.18, 554.37, 1108.73],
+            'D': [18.35, 36.71, 73.42, 146.83, 293.66, 587.33, 1174.66],
+            'D#': [19.45, 38.89, 77.78, 155.56, 311.13, 622.25, 1244.51],
+            'E': [20.60, 41.20, 82.41, 164.81, 329.63, 659.25, 1318.51],
+            'F': [21.83, 43.65, 87.31, 174.61, 349.23, 698.46, 1396.91],
+            'F#': [23.12, 46.25, 92.50, 185.00, 369.99, 739.99, 1479.98],
+            'G': [24.50, 49.00, 98.00, 196.00, 392.00, 783.99, 1567.98],
+            'G#': [25.96, 51.91, 103.83, 207.65, 415.30, 830.61, 1661.22],
+            'A': [27.50, 55.00, 110.00, 220.00, 440.00, 880.00, 1760.00],
+            'A#': [29.14, 58.27, 116.54, 233.08, 466.16, 932.33, 1864.66],
+            'B': [30.87, 61.74, 123.47, 246.94, 493.88, 987.77, 1975.53]
+        };
+
+        function getClosestNote(frequency) {
+            let closestNote = '';
+            let closestFreq = 0;
+            let minDiff = Infinity;
+
+            for (const [note, frequencies] of Object.entries(noteFrequencies)) {
+                for (let i = 0; i < frequencies.length; i++) {
+                    const diff = Math.abs(frequency - frequencies[i]);
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        closestNote = note + (i + 1);
+                        closestFreq = frequencies[i];
+                    }
+                }
+            }
+
+            return { note: closestNote, frequency: closestFreq };
+        }
+
+        function getCents(frequency, targetFreq) {
+            return Math.round(1200 * Math.log2(frequency / targetFreq));
+        }
+
+        function autoCorrelate(buffer, sampleRate) {
+            const SIZE = buffer.length;
+            const rms = Math.sqrt(buffer.reduce((sum, val) => sum + val * val, 0) / SIZE);
+            
+            if (rms < 0.01) return -1; // Signal too quiet
+            
+            let r1 = 0, r2 = SIZE - 1;
+            const threshold = 0.2;
+            
+            // Find the first point where the signal crosses zero
+            for (let i = 0; i < SIZE / 2; i++) {
+                if (Math.abs(buffer[i]) < threshold) {
+                    r1 = i;
+                    break;
+                }
+            }
+            
+            // Find the last point where the signal crosses zero
+            for (let i = 1; i < SIZE / 2; i++) {
+                if (Math.abs(buffer[SIZE - i]) < threshold) {
+                    r2 = SIZE - i;
+                    break;
+                }
+            }
+            
+            buffer = buffer.slice(r1, r2);
+            const c = new Array(buffer.length).fill(0);
+            
+            // Autocorrelation
+            for (let i = 0; i < buffer.length; i++) {
+                for (let j = 0; j < buffer.length - i; j++) {
+                    c[i] += buffer[j] * buffer[j + i];
+                }
+            }
+            
+            let d = 0;
+            while (c[d] > c[d + 1]) d++;
+            
+            let maxval = -1, maxpos = -1;
+            for (let i = d; i < buffer.length; i++) {
+                if (c[i] > maxval) {
+                    maxval = c[i];
+                    maxpos = i;
+                }
+            }
+            
+            let T0 = maxpos;
+            
+            // Parabolic interpolation
+            const y1 = c[T0 - 1], y2 = c[T0], y3 = c[T0 + 1];
+            const a = (y1 - 2 * y2 + y3) / 2;
+            const b = (y3 - y1) / 2;
+            
+            if (a) T0 = T0 - b / (2 * a);
+            
+            return sampleRate / T0;
+        }
+
+        function updateDisplay(frequency) {
+            frequencyDisplay.textContent = frequency.toFixed(2) + ' Hz';
+            
+            const closest = getClosestNote(frequency);
+            noteDisplay.textContent = closest.note;
+            
+            const cents = getCents(frequency, closest.frequency);
+            centsDisplay.textContent = cents + ' cents';
+            
+            // Update tuning needle position
+            const needlePosition = Math.max(0, Math.min(100, 50 + (cents / 50) * 50));
+            tuningNeedle.style.left = needlePosition + '%';
+            
+            // Update status
+            if (Math.abs(cents) <= 5) {
+                statusDisplay.textContent = '🎯 IN TUNE!';
+                statusDisplay.className = 'status in-tune';
+            } else if (cents > 5) {
+                statusDisplay.textContent = '⬇️ TOO SHARP - Tune Down';
+                statusDisplay.className = 'status sharp';
+            } else {
+                statusDisplay.textContent = '⬆️ TOO FLAT - Tune Up';
+                statusDisplay.className = 'status flat';
+            }
+        }
+
+        function processAudio() {
+            if (!isListening) return;
+            
+            analyser.getFloatTimeDomainData(dataArray);
+            const pitch = autoCorrelate(dataArray, audioContext.sampleRate);
+            
+            if (pitch > 0 && pitch < 2000) {
+                updateDisplay(pitch);
+            }
+            
+            animationId = requestAnimationFrame(processAudio);
+        }
+
+        async function startTuning() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: false,
+                        autoGainControl: false,
+                        noiseSuppression: false
+                    } 
+                });
+                
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                microphone = audioContext.createMediaStreamSource(stream);
+                
+                analyser.fftSize = 4096;
+                dataArray = new Float32Array(analyser.fftSize);
+                
+                microphone.connect(analyser);
+                
+                isListening = true;
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                micStatus.textContent = 'Microphone: Active - Play a string!';
+                statusDisplay.textContent = 'Listening for guitar strings...';
+                statusDisplay.className = 'status';
+                
+                processAudio();
+                
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                statusDisplay.textContent = 'Error: Could not access microphone';
+                statusDisplay.className = 'status';
+                micStatus.textContent = 'Microphone: Access denied';
+            }
+        }
+
+        function stopTuning() {
+            isListening = false;
+            
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            
+            if (audioContext) {
+                audioContext.close();
+            }
+            
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            micStatus.textContent = 'Microphone: Not active';
+            statusDisplay.textContent = 'Click "Start Tuning" to begin';
+            statusDisplay.className = 'status';
+            
+            frequencyDisplay.textContent = '0.0 Hz';
+            noteDisplay.textContent = '-';
+            centsDisplay.textContent = '0 cents';
+            tuningNeedle.style.left = '50%';
+        }
+
+        // Event listeners
+        startBtn.addEventListener('click', startTuning);
+        stopBtn.addEventListener('click', stopTuning);
+
+        // String button functionality
+        stringButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                stringButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentTargetFreq = parseFloat(btn.dataset.freq);
+            });
+        });
+
+        // Check for browser support
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            statusDisplay.textContent = 'Error: Browser does not support microphone access';
+            statusDisplay.className = 'status';
+            startBtn.disabled = true;
+        }
+    </script>
+</body>
+</html>
