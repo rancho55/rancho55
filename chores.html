@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chore Negotiator</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+  <style>
+    body {
+      background: linear-gradient(135deg, #f7d358, #4b79a1 90%);
+      font-family: 'Segoe UI', 'Arial', sans-serif;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      background: #fff9e3;
+      border-radius: 18px;
+      box-shadow: 0 0 16px #ffd70077;
+      padding: 24px 14px 18px 14px;
+      margin: 32px 0 0 0;
+      width: 95%;
+      max-width: 420px;
+    }
+    h1 {
+      color: #f7b731;
+      text-align: center;
+      margin-bottom: 18px;
+      letter-spacing: 1px;
+      font-size: 2em;
+    }
+    .service-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .service-btn {
+      background: #fff;
+      border: 2px solid #ffd700;
+      border-radius: 12px;
+      padding: 12px 10px 8px 10px;
+      box-shadow: 0 2px 8px #ffd70022;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      width: 90px;
+      transition: box-shadow 0.2s, border-color 0.2s;
+      outline: none;
+    }
+    .service-btn.selected, .service-btn:focus {
+      border-color: #4b79a1;
+      box-shadow: 0 0 8px #4b79a1cc;
+    }
+    .service-btn img {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 7px;
+      user-select: none;
+      pointer-events: none;
+      object-fit: cover;
+      border-radius: 6px;
+      background: #eee;
+    }
+    .service-label {
+      font-size: 1em;
+      color: #4b79a1;
+      font-weight: bold;
+      text-align: center;
+      user-select: none;
+    }
+    .input-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .input-row input {
+      flex: 1;
+      padding: 8px;
+      font-size: 1em;
+      border-radius: 6px;
+      border: 1px solid #ffd700;
+      outline: none;
+    }
+    .canned-msg {
+      background: #f7f7f7;
+      border: 1px solid #ffd700;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 1.07em;
+      color: #333;
+      margin-bottom: 10px;
+      min-height: 36px;
+      box-shadow: 0 2px 8px #ffd70022;
+    }
+    .send-btn {
+      width: 100%;
+      background: #4b79a1;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 1.1em;
+      padding: 10px 0;
+      cursor: pointer;
+      margin-top: 8px;
+      font-weight: bold;
+      box-shadow: 0 2px 8px #ffd70022;
+      transition: background 0.2s;
+    }
+    .send-btn:hover {
+      background: #35516a;
+    }
+    .copied-msg {
+      color: #27ae60;
+      text-align: center;
+      margin-top: 8px;
+      font-size: 0.97em;
+      min-height: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Chore Negotiator</h1>
+    <div class="service-grid">
+      <button class="service-btn" onclick="selectService(0)" id="service0" aria-label="Mowing Service">
+        <img src="mowing.jpg" alt="Lawn Mower" />
+        <span class="service-label">Mowing</span>
+      </button>
+      <button class="service-btn" onclick="selectService(1)" id="service1" aria-label="Plumbing Service">
+        <img src="plumbing.jpg" alt="Plumbing" />
+        <span class="service-label">Plumbing</span>
+      </button>
+      <button class="service-btn" onclick="selectService(2)" id="service2" aria-label="Dishwasher Repair">
+        <img src="dishwasher.jpg" alt="Dishwasher" />
+        <span class="service-label">Dishwasher</span>
+      </button>
+      <button class="service-btn" onclick="selectService(3)" id="service3" aria-label="Mechanic Service">
+        <img src="mechanic.jpg" alt="Mechanic" />
+        <span class="service-label">Mechanic</span>
+      </button>
+    </div>
+    <div class="canned-msg" id="cannedMsg" aria-live="polite"></div>
+    <div class="input-row">
+      <input id="phoneInput" type="tel" placeholder="Phone number" pattern="[0-9+ ]*" aria-label="Phone number input" />
+    </div>
+    <button class="send-btn" onclick="sendSMS()">Send Message</button>
+    <div id="copiedMsg" class="copied-msg" role="alert" aria-live="assertive"></div>
+  </div>
+  <script>
+    // 10 canned negotiation messages for each service
+    const cannedMessages = [
+      [
+        "Hi, could you offer a better price for mowing?",
+        "Is there any discount for regular mowing?",
+        "Would you consider a lower rate for my lawn?",
+        "Can you match a competitor’s mowing price?",
+        "Are there any seasonal mowing specials?",
+        "Can I get a deal if I refer a neighbor for mowing?",
+        "Is there a package deal for multiple mowings?",
+        "Would you accept $___ for this mowing job?",
+        "Can you offer a first-time customer discount for mowing?",
+        "I'm interested, but is your price flexible for mowing?"
+      ],
+      [
+        "Hello, can you lower your plumbing service fee?",
+        "Is there a discount for plumbing repairs this week?",
+        "Would you consider a better rate for my plumbing job?",
+        "Can you match a competitor’s plumbing quote?",
+        "Are there any current plumbing specials?",
+        "Can I get a deal if I book multiple plumbing services?",
+        "Is there a referral discount for plumbing?",
+        "Would you accept $___ for this plumbing repair?",
+        "I'm interested, but is your plumbing price flexible?",
+        "Can you offer a new customer discount for plumbing?"
+      ],
+      [
+        "Hi, can you offer a better price for dishwasher repair?",
+        "Is there a discount for fixing my dishwasher?",
+        "Would you consider a lower rate for this dishwasher job?",
+        "Can you match a competitor’s dishwasher repair price?",
+        "Are there any specials for appliance repair?",
+        "Can I get a deal if I refer a friend for dishwasher repair?",
+        "Is there a package deal for multiple appliance repairs?",
+        "Would you accept $___ for this dishwasher repair?",
+        "I'm interested, but is your price flexible for dishwasher repair?",
+        "Can you offer a first-time customer discount for dishwasher repair?"
+      ],
+      [
+        "Hello, would you consider a lower price for mechanic work?",
+        "Is there a discount for car repair this month?",
+        "Would you accept a better rate for my car service?",
+        "Can you match a competitor’s mechanic quote?",
+        "Are there any specials for auto repair right now?",
+        "Can I get a deal if I refer a friend to your shop?",
+        "Is there a package deal for multiple car services?",
+        "Would you accept $___ for this car repair?",
+        "I'm interested, but is your mechanic price flexible?",
+        "Can you offer a new customer discount for mechanic work?"
+      ]
+    ];
+    let selectedService = null;
+    let lastMsgIndex = [-1, -1, -1, -1];
+
+    function selectService(idx) {
+      selectedService = idx;
+      for (let i = 0; i < 4; i++) {
+        document.getElementById('service' + i).classList.remove('selected');
+      }
+      document.getElementById('service' + idx).classList.add('selected');
+      showRandomMessage(idx);
+      document.getElementById('copiedMsg').textContent = "";
+    }
+
+    function showRandomMessage(idx) {
+      let arr = cannedMessages[idx];
+      let msgIdx;
+      do {
+        msgIdx = Math.floor(Math.random() * arr.length);
+      } while (arr.length > 1 && msgIdx === lastMsgIndex[idx]);
+      lastMsgIndex[idx] = msgIdx;
+      document.getElementById('cannedMsg').textContent = arr[msgIdx];
+    }
+
+    document.querySelectorAll('.service-btn').forEach((btn, idx) => {
+      btn.addEventListener('click', function () {
+        if (selectedService === idx) showRandomMessage(idx);
+      });
+    });
+
+    function sendSMS() {
+      const phone = document.getElementById('phoneInput').value.trim();
+      let msg = document.getElementById('cannedMsg').textContent;
+      if (!msg) {
+        document.getElementById('copiedMsg').textContent = "Please select a service.";
+        return;
+      }
+      if (!phone) {
+        document.getElementById('copiedMsg').textContent = "Please enter a phone number.";
+        return;
+      }
+      // Encode message for URI
+      const encodedMsg = encodeURIComponent(msg);
+
+      // Use &body= for iOS and most Androids (this is the most robust)
+      window.location.href = `sms:${phone}&body=${encodedMsg}`;
+    }
+  </script>
+</body>
+</html>
