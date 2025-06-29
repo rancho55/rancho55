@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>iPhone 11 Space Shooter with Advanced Sounds</title>
+    <style>
+        /* General Body and Container Styles */
+        body {
+            margin: 0;
+            overflow: hidden; /* Prevent scrolling */
+            background-color: #1a1a2e; /* Dark space background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh; /* Full viewport height */
+            font-family: 'Inter', sans-serif; /* Modern font */
+            color: #e0e0e0; /* Light text for contrast */
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column; /* Arrange content vertically */
+        }
+
+        #gameCanvas {
+            background-color: #0d0d1a; /* Even darker space background for canvas */
+            display: block;
+            width: 100%; /* Take full width of container */
+            height: 100%; /* Take full height of container */
+            touch-action: none; /* Prevents default browser touch actions on the canvas itself */
+            border-radius: 10px; /* Rounded corners for the game area */
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.4); /* Glow effect */
+        }
+
+        /* UI Overlay for controls and score */
+        .ui-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 20vmax; /* Enough space for controls */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 2vmax; /* Padding inside the overlay */
+            box-sizing: border-box; /* Include padding in width/height */
+            pointer-events: none; /* Allows clicks/touches to pass through unless on specific buttons/joystick */
+        }
+
+        /* Virtual Joystick Styling */
+        #joystick-base {
+            pointer-events: auto; /* Re-enable pointer events for interaction */
+            bottom: auto; /* Override default bottom position from main style */
+            left: 2vmax;  /* Position from left */
+            width: 20vmax; /* Size of the joystick base, scales with viewport */
+            height: 20vmax;
+            background-color: rgba(0, 191, 255, 0.2); /* Semi-transparent blue base */
+            border-radius: 50%; /* Make it a circle */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            touch-action: none; /* Crucial: Prevents default browser touch actions on the joystick */
+            border: 2px solid rgba(0, 191, 255, 0.4);
+            box-shadow: 0 0 15px rgba(0, 191, 255, 0.5); /* Blue glow */
+        }
+
+        #joystick-thumb {
+            width: 8vmax; /* Size of the movable thumb, scales with viewport */
+            height: 8vmax;
+            background-color: rgba(0, 191, 255, 0.6); /* Semi-transparent blue thumb */
+            border-radius: 50%; /* Make it a circle */
+            position: absolute; /* Allows movement relative to its initial position */
+            transform: translate(-50%, -50%); /* Center the thumb initially */
+            touch-action: none; /* Crucial: Prevents default browser touch actions on the thumb */
+        }
+
+        /* Shoot Button Styling */
+        #shoot-button {
+            pointer-events: auto; /* Re-enable pointer events for interaction */
+            width: 15vmax;
+            height: 15vmax;
+            background-color: rgba(255, 69, 0, 0.6); /* Semi-transparent orange */
+            border: 2px solid rgba(255, 69, 0, 0.8);
+            border-radius: 50%; /* Circular button */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3vmax;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            cursor: pointer;
+            user-select: none; /* Prevent text selection on tap */
+            box-shadow: 0 0 15px rgba(255, 69, 0, 0.5); /* Orange glow */
+            transition: transform 0.1s ease-out;
+            margin-right: 2vmax; /* Position from right */
+            touch-action: manipulation; /* Allow tap but prevent double tap zoom */
+        }
+
+        #shoot-button:active {
+            transform: scale(0.9); /* Visual feedback on press */
+        }
+
+        /* Score Display */
+        #score-display {
+            position: absolute;
+            top: 2vmax;
+            right: 2vmax;
+            font-size: 4vmax;
+            font-weight: bold;
+            color: #00ffcc; /* Bright cyan for score */
+            text-shadow: 0 0 10px rgba(0, 255, 204, 0.7);
+            z-index: 10; /* Ensure it's on top */
+        }
+
+        /* Debug Info (Can be hidden in final version) */
+        #debug-info {
+            position: absolute;
+            top: 10px;
+            left: 10px; /* Moved to left */
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 0.8em;
+            display: none; /* Hide by default for game */
+        }
+
+        #debug-info p {
+            margin: 5px 0;
+        }
+
+        /* Game Over Screen */
+        #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20; /* On top of everything */
+            display: none; /* Hidden by default */
+        }
+
+        #game-over-screen h2 {
+            font-size: 8vmax;
+            color: #ff4500; /* Orange-red for game over */
+            text-shadow: 0 0 20px rgba(255, 69, 0, 0.7);
+            margin-bottom: 2vmax;
+        }
+
+        #final-score {
+            font-size: 5vmax;
+            color: #00ffcc;
+            margin-bottom: 4vmax;
+        }
+
+        #restart-button {
+            padding: 3vmax 6vmax;
+            font-size: 4vmax;
+            font-weight: bold;
+            background-color: #00bfff; /* Deep sky blue */
+            color: white;
+            border: 2px solid #00aaff;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(0, 191, 255, 0.6);
+            transition: transform 0.1s ease-out, background-color 0.2s;
+            touch-action: manipulation;
+        }
+
+        #restart-button:active {
+            transform: scale(0.95);
+            background-color: #0099cc;
+        }
+
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+
+        <div class="ui-overlay">
+            <div id="joystick-base">
+                <div id="joystick-thumb"></div>
+            </div>
+
+            <button id="shoot-button">SHOOT</button>
+        </div>
+
+        <div id="score-display">Score: <span id="current-score">0</span></div>
+
+        <div id="game-over-screen">
+            <h2>GAME OVER</h2>
+            <p id="final-score">Your Score: 0</p>
+            <button id="restart-button">RESTART</button>
+        </div>
+
+        <div id="debug-info">
+            <p>Direction: <span id="debug-direction">CENTER</span></p>
+            <p>Magnitude: <span id="debug-magnitude">0.00</span></p>
+            <p>X: <span id="debug-x">0.00</span>, Y: <span id="debug-y">0.00</span></p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const joystickBase = document.getElementById('joystick-base');
+            const joystickThumb = document.getElementById('joystick-thumb');
+            const shootButton = document.getElementById('shoot-button');
+            const scoreDisplay = document.getElementById('current-score');
+            const gameOverScreen = document.getElementById('game-over-screen');
+            const finalScoreDisplay = document.getElementById('final-score');
+            const restartButton = document.getElementById('restart-button');
+
+            // --- Web Audio API Context ---
+            let audioCtx;
+            const initAudioContext = () => {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    if (audioCtx.state === 'suspended') {
+                        audioCtx.resume();
+                    }
+                }
+            };
+            document.body.addEventListener('touchstart', initAudioContext, { once: true });
+            document.body.addEventListener('mousedown', initAudioContext, { once: true });
+
+            // Helper function to create a sound with frequency modulation for "oscillating/octave" effect
+            // We'll use this for several of the sounds.
+            function playModulatedSound(startFreq, endFreq, duration, steps = 4, type = 'sine', volume = 0.5) {
+                if (!audioCtx) return;
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = type;
+                gain.gain.setValueAtTime(0, audioCtx.currentTime); // Start silent
+
+                const stepDuration = duration / steps;
+                const currentTime = audioCtx.currentTime;
+
+                // Create a series of frequency changes
+                for (let i = 0; i < steps; i++) {
+                    const progress = i / (steps - 1); // Normalized progress from 0 to 1
+                    const freq = startFreq + (endFreq - startFreq) * progress;
+                    osc.frequency.setValueAtTime(freq, currentTime + i * stepDuration);
+                }
+
+                // Envelope: quick attack, sustain, quick decay
+                const attackTime = duration * 0.1;
+                const releaseTime = duration * 0.2;
+                gain.gain.linearRampToValueAtTime(volume, currentTime + attackTime);
+                gain.gain.linearRampToValueAtTime(volume, currentTime + duration - releaseTime); // Sustain
+                gain.gain.linearRampToValueAtTime(0, currentTime + duration); // Release to zero
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(currentTime);
+                osc.stop(currentTime + duration);
+            }
+
+            // --- Specific Sound Definitions (8 parts with "octave-like" chop) ---
+            const Sounds = {
+                // 1. Player Shoot (fast, high-pitched, ascending chop)
+                playerShoot: () => playModulatedSound(880, 1760, 0.1, 4, 'sine', 0.6), // Jumps an octave up
+                // 2. Enemy Explode (lower, descending, slightly noisy chop)
+                enemyExplode: () => playModulatedSound(400, 100, 0.2, 8, 'square', 0.7), // Descending sweep
+                // 3. Player Hit (more dramatic, descending, wide range chop)
+                playerHit: () => playModulatedSound(600, 150, 0.8, 16, 'sawtooth', 0.8),
+                // 4. Score Increase (quick, positive, upward chop)
+                score: () => playModulatedSound(1000, 1500, 0.08, 4, 'sine', 0.4),
+                // 5. Enemy Spawn (low, slow, subtle pulse-like chop)
+                enemySpawn: () => playModulatedSound(80, 160, 0.4, 2, 'triangle', 0.3),
+                // 6. Game Start (fast, multi-note ascending arpeggio)
+                gameStart: () => {
+                    if (!audioCtx) return;
+                    const baseFreq = 440; // A4
+                    const notes = [baseFreq, baseFreq * 1.26, baseFreq * 1.5, baseFreq * 2]; // A, C#, E, A (octave)
+                    notes.forEach((freq, i) => {
+                        setTimeout(() => playModulatedSound(freq, freq * 1.05, 0.08, 2, 'sine', 0.3), i * 50);
+                    });
+                },
+                // 7. Game Over (slow, descending, dissonant chord effect with chop)
+                gameOver: () => {
+                    if (!audioCtx) return;
+                    const baseFreq = 220; // A3
+                    const notes = [baseFreq, baseFreq * 0.9, baseFreq * 0.75]; // A, G#, F# (descending, slight dissonance)
+                    notes.forEach((freq, i) => {
+                        setTimeout(() => playModulatedSound(freq, freq * 0.5, 1.2, 20, 'sawtooth', 0.7), i * 100);
+                    });
+                },
+                // 8. UI Button Click (crisp, subtle ascending chop)
+                uiClick: () => playModulatedSound(700, 800, 0.06, 2, 'square', 0.2)
+            };
+
+            // --- Game State Variables ---
+            let joystickActive = false;
+            let currentTouchId = -1; // To track a specific touch for the joystick
+            let joystickCenter = { x: 0, y: 0 };
+            let joystickRadius = 0;
+            let thumbRadius = 0;
+            let joystickOutput = { x: 0, y: 0, angle: 0, magnitude: 0 }; // Normalized from -1 to 1
+
+            let gameRunning = false;
+            let score = 0;
+            let lastFrameTime = performance.now(); // Initialize lastFrameTime correctly
+
+            // Player Ship properties
+            const player = {
+                x: 0, y: 0, // Will be set to center on resize
+                size: 30,
+                speed: 400, // pixels per second
+                color: '#00ccff', // Bright blue
+                bullets: [],
+                lastShotTime: 0,
+                fireRate: 200 // ms between shots
+            };
+
+            // Bullet properties
+            const BULLET_SPEED = 600; // pixels per second
+            const BULLET_SIZE = 8;
+            const BULLET_COLOR = '#ffdb58'; // Gold/Yellow
+
+            // Enemy properties
+            const ENEMIES = [];
+            const ENEMY_SIZE = 40;
+            const ENEMY_COLOR = '#ff4500'; // Orange-red
+            const ENEMY_SPEED = 150; // pixels per second
+            let lastEnemySpawnTime = 0;
+            const ENEMY_SPAWN_INTERVAL = 1500; // ms between spawns
+
+            // --- Initialization and Resizing ---
+            function resizeGame() {
+                canvas.width = window.innerWidth * window.devicePixelRatio;
+                canvas.height = window.innerHeight * window.devicePixelRatio;
+                canvas.style.width = window.innerWidth + 'px';
+                canvas.style.height = window.innerHeight + 'px';
+
+                ctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+
+                const baseRect = joystickBase.getBoundingClientRect();
+                joystickCenter.x = baseRect.left + baseRect.width / 2;
+                joystickCenter.y = baseRect.top + baseRect.height / 2;
+                joystickRadius = baseRect.width / 2;
+                thumbRadius = joystickThumb.getBoundingClientRect().width / 2;
+
+                player.x = window.innerWidth / 2;
+                player.y = window.innerHeight / 2 + (window.innerHeight / 4);
+            }
+
+            window.addEventListener('resize', resizeGame);
+            resizeGame(); // Initial resize and positioning
+
+            // --- Game Start/Restart ---
+            function startGame() {
+                score = 0;
+                scoreDisplay.textContent = score;
+                player.bullets = [];
+                ENEMIES.length = 0;
+                player.lastShotTime = 0;
+                lastEnemySpawnTime = performance.now();
+                gameOverScreen.style.display = 'none';
+                gameRunning = true;
+                lastFrameTime = performance.now();
+                requestAnimationFrame(gameLoop);
+                Sounds.gameStart(); // Play game start sound
+            }
+
+            function endGame() {
+                gameRunning = false;
+                finalScoreDisplay.textContent = `Your Score: ${score}`;
+                gameOverScreen.style.display = 'flex';
+                Sounds.gameOver(); // Play game over sound
+            }
+
+            // --- Main Game Loop ---
+            function gameLoop(currentTime) {
+                if (!gameRunning) {
+                    lastFrameTime = currentTime;
+                    return;
+                }
+
+                const deltaTime = (currentTime - lastFrameTime) / 1000;
+                lastFrameTime = currentTime;
+
+                updateGame(deltaTime, currentTime);
+                drawGame();
+
+                requestAnimationFrame(gameLoop);
+            }
+
+            function updateGame(deltaTime, currentTime) {
+                player.x += joystickOutput.x * player.speed * deltaTime;
+                player.y += joystickOutput.y * player.speed * deltaTime;
+
+                player.x = Math.max(player.size / 2, Math.min(window.innerWidth - player.size / 2, player.x));
+                player.y = Math.max(player.size / 2, Math.min(window.innerHeight - player.size / 2, player.y));
+
+                for (let i = player.bullets.length - 1; i >= 0; i--) {
+                    const bullet = player.bullets[i];
+                    bullet.y -= BULLET_SPEED * deltaTime;
+                    if (bullet.y < -BULLET_SIZE) {
+                        player.bullets.splice(i, 1);
+                    }
+                }
+
+                if (currentTime - lastEnemySpawnTime > ENEMY_SPAWN_INTERVAL) {
+                    spawnEnemy();
+                    lastEnemySpawnTime = currentTime;
+                    Sounds.enemySpawn();
+                }
+
+                for (let i = ENEMIES.length - 1; i >= 0; i--) {
+                    const enemy = ENEMIES[i];
+                    enemy.y += ENEMY_SPEED * deltaTime;
+                    if (enemy.y > window.innerHeight + ENEMY_SIZE) {
+                        ENEMIES.splice(i, 1);
+                    }
+
+                    if (isColliding(player, enemy, player.size / 2, ENEMY_SIZE / 2)) {
+                        Sounds.playerHit();
+                        endGame();
+                        return;
+                    }
+                }
+
+                for (let i = player.bullets.length - 1; i >= 0; i--) {
+                    const bullet = player.bullets[i];
+                    for (let j = ENEMIES.length - 1; j >= 0; j--) {
+                        const enemy = ENEMIES[j];
+                        if (isColliding(bullet, enemy, BULLET_SIZE / 2, ENEMY_SIZE / 2)) {
+                            player.bullets.splice(i, 1);
+                            ENEMIES.splice(j, 1);
+                            score++;
+                            scoreDisplay.textContent = score;
+                            Sounds.score();
+                            Sounds.enemyExplode();
+                            break;
+                        }
+                    }
+                }
+            }
+
+            function drawGame() {
+                ctx.clearRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
+
+                ctx.fillStyle = player.color;
+                ctx.save();
+                ctx.translate(player.x, player.y);
+
+                let rotationAngle = -Math.PI / 2;
+                if (joystickOutput.magnitude > 0.1) {
+                    rotationAngle = joystickOutput.angle + Math.PI / 2;
+                }
+                ctx.rotate(rotationAngle);
+
+                ctx.beginPath();
+                ctx.moveTo(0, -player.size / 2);
+                ctx.lineTo(-player.size / 2, player.size / 2);
+                ctx.lineTo(player.size / 2, player.size / 2);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+
+                ctx.fillStyle = BULLET_COLOR;
+                player.bullets.forEach(bullet => {
+                    ctx.beginPath();
+                    ctx.arc(bullet.x, bullet.y, BULLET_SIZE / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+                ctx.fillStyle = ENEMY_COLOR;
+                ENEMIES.forEach(enemy => {
+                    ctx.fillRect(enemy.x - ENEMY_SIZE / 2, enemy.y - ENEMY_SIZE / 2, ENEMY_SIZE, ENEMY_SIZE);
+                });
+            }
+
+            // --- Game Logic Functions ---
+            function fireBullet() {
+                const currentTime = performance.now();
+                if (gameRunning && currentTime - player.lastShotTime > player.fireRate) {
+                    player.bullets.push({
+                        x: player.x,
+                        y: player.y - player.size / 2,
+                        active: true
+                    });
+                    player.lastShotTime = currentTime;
+                    Sounds.playerShoot();
+                }
+            }
+
+            function spawnEnemy() {
+                const x = Math.random() * (window.innerWidth - ENEMY_SIZE) + ENEMY_SIZE / 2;
+                ENEMIES.push({
+                    x: x,
+                    y: -ENEMY_SIZE / 2,
+                    active: true
+                });
+            }
+
+            function isColliding(obj1, obj2, size1, size2) {
+                const dx = obj1.x - obj2.x;
+                const dy = obj1.y - obj2.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const minDistance = size1 + size2;
+                return distance < minDistance;
+            }
+
+            // --- Joystick Touch Event Handlers ---
+            joystickBase.addEventListener('touchstart', handleJoystickTouchStart);
+            document.addEventListener('touchmove', handleJoystickTouchMove, { passive: false });
+            document.addEventListener('touchend', handleJoystickTouchEnd);
+            document.addEventListener('touchcancel', handleJoystickTouchEnd);
+
+            function handleJoystickTouchStart(event) {
+                event.preventDefault();
+                if (!joystickActive) {
+                    initAudioContext();
+                    joystickActive = true;
+                    currentTouchId = event.changedTouches[0].identifier;
+                    handleJoystickTouchMove(event);
+                }
+            }
+
+            function handleJoystickTouchMove(event) {
+                if (!joystickActive) return;
+
+                let touch = null;
+                for (let i = 0; i < event.changedTouches.length; i++) {
+                    if (event.changedTouches[i].identifier === currentTouchId) {
+                        touch = event.changedTouches[i];
+                        break;
+                    }
+                }
+                if (!touch) return;
+                event.preventDefault();
+
+                const touchX = touch.clientX;
+                const touchY = touch.clientY;
+
+                let deltaX = touchX - joystickCenter.x;
+                let deltaY = touchY - joystickCenter.y;
+
+                let distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+                const maxThumbDistance = joystickRadius - thumbRadius;
+                if (distance > maxThumbDistance) {
+                    const angle = Math.atan2(deltaY, deltaX);
+                    deltaX = maxThumbDistance * Math.cos(angle);
+                    deltaY = maxThumbDistance * Math.sin(angle);
+                    distance = maxThumbDistance;
+                }
+
+                joystickThumb.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+
+                joystickOutput.x = deltaX / maxThumbDistance;
+                joystickOutput.y = deltaY / maxThumbDistance;
+                joystickOutput.magnitude = distance / maxThumbDistance;
+                joystickOutput.angle = Math.atan2(joystickOutput.y, joystickOutput.x);
+            }
+
+            function handleJoystickTouchEnd(event) {
+                if (!joystickActive) return;
+
+                let isOurTouch = false;
+                for (let i = 0; i < event.changedTouches.length; i++) {
+                    if (event.changedTouches[i].identifier === currentTouchId) {
+                        isOurTouch = true;
+                        break;
+                    }
+                }
+                if (!isOurTouch) return;
+
+                joystickActive = false;
+                currentTouchId = -1;
+
+                joystickThumb.style.transform = `translate(0, 0)`;
+
+                joystickOutput.x = 0;
+                joystickOutput.y = 0;
+                joystickOutput.magnitude = 0;
+                joystickOutput.angle = 0;
+            }
+
+            // --- Shoot Button Event ---
+            shootButton.addEventListener('touchstart', (event) => {
+                event.preventDefault();
+                initAudioContext();
+                fireBullet();
+            });
+
+            // --- Restart Button Event ---
+            restartButton.addEventListener('click', () => {
+                initAudioContext();
+                startGame();
+            });
+
+            // Initial game start
+            startGame();
+        });
+    </script>
+</body>
+</html>
