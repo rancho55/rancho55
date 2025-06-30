@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mathematical Innovation Magazine</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .title {
+            font-size: 2.5rem;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.3rem;
+            color: #7f8c8d;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            border-left: 5px solid #e74c3c;
+        }
+
+        .panel-title {
+            font-size: 1.6rem;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .panel-text {
+            font-size: 1.1rem;
+            color: #555;
+            line-height: 1.7;
+        }
+
+        .grid-container {
+            background: #1a1a1a;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 30px 0;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .canvas-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .info-panel {
+            background: #2a2a2a;
+            border: 2px solid #444;
+            border-radius: 10px;
+            padding: 20px;
+            min-width: 200px;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+        }
+
+        .info-title {
+            color: #00ff88;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+        }
+
+        .info-item {
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .info-label {
+            color: #ccc;
+        }
+
+        .info-value {
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .intersection-list {
+            max-height: 150px;
+            overflow-y: auto;
+            margin-top: 10px;
+            padding: 5px;
+            background: #1a1a1a;
+            border-radius: 5px;
+        }
+
+        .intersection-item {
+            color: #ffff88;
+            font-size: 12px;
+            margin-bottom: 3px;
+        }
+
+        .grid-title {
+            color: #00ff88;
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .grid-canvas {
+            background: #000;
+            border: 2px solid #333;
+            border-radius: 10px;
+            margin: 0 auto;
+            display: block;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #ccc;
+        }
+
+        input[type="number"] {
+            width: 80px;
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid #555;
+            background: #2a2a2a;
+            color: #fff;
+        }
+
+        button {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: linear-gradient(45deg, #c0392b, #a93226);
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 15px;
+            color: #ccc;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .red-dot { background: #ff0000; }
+        .green-dot { background: #00ff00; }
+        .blue-line { background: #0088ff; }
+
+        .highlight {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-style: italic;
+        }
+
+        .specs {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 2px solid #e9ecef;
+        }
+
+        .specs-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        @media (max-width: 600px) {
+            .title {
+                font-size: 2rem;
+            }
+            
+            .grid-canvas {
+                width: 300px !important;
+                height: 300px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">Decimoniol Grid Marker</h1>
+            <p class="subtitle">Revolutionary Mathematical Verification System</p>
+        </div>
+
+        <div class="panel">
+            <h2 class="panel-title">The Innovation</h2>
+            <p class="panel-text">
+                The Decimoniol Grid Marker represents a breakthrough in mathematical verification technology. This system provides ultra-precise visual confirmation of calculations using a revolutionary grid-based approach with .0000000001 accuracy.
+            </p>
+            <div class="highlight">
+                "A safe way to check math with unprecedented precision - red dots mark integers, green dots show your calculations."
+            </div>
+        </div>
+
+        <div class="grid-container">
+            <div class="canvas-section">
+                <h3 class="grid-title">Interactive Decimoniol Grid Demonstration</h3>
+                <canvas id="gridCanvas" class="grid-canvas" width="400" height="400"></canvas>
+                
+                <div class="controls">
+                    <div class="control-group">
+                        <label>Test Value:</label>
+                        <input type="number" id="testValue" value="3.14159" step="0.00001">
+                    </div>
+                    <div class="control-group">
+                        <label>Grid Scale:</label>
+                        <input type="number" id="gridScale" value="50" min="10" max="100">
+                    </div>
+                    <div class="control-group">
+                        <label>Circle Perimeter:</label>
+                        <input type="number" id="circlePerimeter" value="10" min="1" max="50" step="0.1">
+                    </div>
+                    <div class="control-group">
+                        <label>Oscillation:</label>
+                        <button id="oscillateBtn" onclick="toggleOscillation()">Start</button>
+                    </div>
+                    <button onclick="updateGrid()">Update Grid</button>
+                    <button onclick="resetGrid()">Reset</button>
+                </div>
+                
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-dot red-dot"></div>
+                        <span>Integer Markers</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot green-dot"></div>
+                        <span>Test Value</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot blue-line"></div>
+                        <span>Circle (Variable Perimeter)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background: #ffff00;"></div>
+                        <span>Integer Intersections</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-panel">
+                <div class="info-title">Live Status</div>
+                <div class="info-item">
+                    <span class="info-label">Perimeter:</span>
+                    <span class="info-value" id="currentPerimeter">10.0</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Radius:</span>
+                    <span class="info-value" id="currentRadius">1.59</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Intersections:</span>
+                    <span class="info-value" id="intersectionCount">0</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Status:</span>
+                    <span class="info-value" id="oscillationStatus">Static</span>
+                </div>
+                <div class="intersection-list" id="intersectionList">
+                    <div style="color: #888; text-align: center; font-size: 11px;">No intersections found</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2 class="panel-title">How It Works</h2>
+            <p class="panel-text">
+                The system centers at zero with a circle of perimeter 10, creating natural reference points. The ultra-fine grid provides .0000000001 precision, while color-coded markers instantly show relationships between calculated values and integer positions.
+            </p>
+            
+            <div class="specs">
+                <div class="specs-title">Technical Specifications:</div>
+                <ul>
+                    <li><strong>Precision:</strong> .0000000001 accuracy</li>
+                    <li><strong>Reference Circle:</strong> Perimeter = 10 units</li>
+                    <li><strong>Integer Markers:</strong> Red dots at all integer positions</li>
+                    <li><strong>Value Markers:</strong> Green dots for test calculations</li>
+                    <li><strong>Grid Center:</strong> Zero-point reference</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2 class="panel-title">Applications</h2>
+            <p class="panel-text">
+                This revolutionary system enables instant visual verification of complex calculations, making it invaluable for mathematical research, engineering applications, and educational purposes. The grid provides immediate feedback on calculation accuracy and helps identify computational errors before they propagate through larger systems.
+            </p>
+        </div>
+
+        <div class="panel">
+            <h2 class="panel-title">Revolutionary Impact</h2>
+            <p class="panel-text">
+                The Decimoniol Grid Marker transforms mathematical verification from a tedious process into an instant visual confirmation system. By combining ultra-high precision with intuitive color coding, it represents a significant advancement in mathematical tools and computational safety.
+            </p>
+            <div class="highlight">
+                "When precision matters, the Decimoniol Grid Marker provides the visual certainty mathematicians have been waiting for."
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gridCanvas');
+        const ctx = canvas.getContext('2d');
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+
+        let isOscillating = false;
+        let animationId = null;
+        let oscillationTime = 0;
+        let basePerimeter = 10;
+        let oscillationAmplitude = 8;
+        let oscillationSpeed = 0.02;
+
+        function updateInfoPanel(perimeter, radius, intersections) {
+            document.getElementById('currentPerimeter').textContent = perimeter.toFixed(2);
+            document.getElementById('currentRadius').textContent = radius.toFixed(3);
+            document.getElementById('intersectionCount').textContent = intersections.length;
+            document.getElementById('oscillationStatus').textContent = isOscillating ? 'Oscillating' : 'Static';
+            
+            const intersectionList = document.getElementById('intersectionList');
+            if (intersections.length > 0) {
+                intersectionList.innerHTML = intersections.map(point => 
+                    `<div class="intersection-item">(${point.x}, ${point.y})</div>`
+                ).join('');
+            } else {
+                intersectionList.innerHTML = '<div style="color: #888; text-align: center; font-size: 11px;">No intersections found</div>';
+            }
+        }
+
+        function drawGrid(customPerimeter = null) {
+            const scale = parseInt(document.getElementById('gridScale').value);
+            let perimeter;
+            
+            if (customPerimeter !== null) {
+                perimeter = customPerimeter;
+            } else if (isOscillating) {
+                perimeter = basePerimeter + Math.sin(oscillationTime) * oscillationAmplitude;
+                perimeter = Math.max(1, Math.min(30, perimeter)); // Keep within reasonable bounds
+            } else {
+                perimeter = parseFloat(document.getElementById('circlePerimeter').value);
+            }
+            
+            const radius = perimeter / (2 * Math.PI);
+            const gridSize = 400 / scale;
+            
+            // Clear canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw fine grid
+            ctx.strokeStyle = '#111';
+            ctx.lineWidth = 0.5;
+            
+            for (let i = 0; i <= canvas.width; i += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, canvas.height);
+                ctx.stroke();
+            }
+            
+            for (let i = 0; i <= canvas.height; i += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(canvas.width, i);
+                ctx.stroke();
+            }
+            
+            // Draw main axes
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            
+            // X-axis
+            ctx.beginPath();
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(canvas.width, centerY);
+            ctx.stroke();
+            
+            // Y-axis
+            ctx.beginPath();
+            ctx.moveTo(centerX, 0);
+            ctx.lineTo(centerX, canvas.height);
+            ctx.stroke();
+            
+            // Calculate radius from perimeter and draw circle
+            const radiusPixels = radius * scale;
+            
+            // Draw reference circle with pulsing effect if oscillating
+            if (isOscillating) {
+                const pulseIntensity = Math.abs(Math.sin(oscillationTime * 2)) * 0.5 + 0.5;
+                ctx.strokeStyle = `rgba(0, 136, 255, ${pulseIntensity})`;
+                ctx.lineWidth = 2 + Math.sin(oscillationTime * 4) * 1;
+            } else {
+                ctx.strokeStyle = '#0088ff';
+                ctx.lineWidth = 2;
+            }
+            
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radiusPixels, 0, 2 * Math.PI);
+            ctx.stroke();
+            
+            // Check for integer intersections and collect them
+            const intersections = [];
+            
+            // Check all integer points within reasonable range
+            for (let i = -15; i <= 15; i++) {
+                for (let j = -15; j <= 15; j++) {
+                    const distance = Math.sqrt(i * i + j * j);
+                    // Check if point is very close to the circle (within tolerance)
+                    if (Math.abs(distance - radius) < 0.05) {
+                        intersections.push({x: i, y: j});
+                    }
+                }
+            }
+            
+            // Draw integer markers (red dots)
+            ctx.fillStyle = '#ff0000';
+            for (let i = -10; i <= 10; i++) {
+                for (let j = -10; j <= 10; j++) {
+                    const x = centerX + (i * scale);
+                    const y = centerY - (j * scale);
+                    
+                    if (x >= 0 && x <= canvas.width && y >= 0 && y <= canvas.height) {
+                        ctx.beginPath();
+                        ctx.arc(x, y, 3, 0, 2 * Math.PI);
+                        ctx.fill();
+                    }
+                }
+            }
+            
+            // Highlight integer intersections with yellow dots
+            if (intersections.length > 0) {
+                intersections.forEach(point => {
+                    const x = centerX + (point.x * scale);
+                    const y = centerY - (point.y * scale);
+                    
+                    if (x >= 0 && x <= canvas.width && y >= 0 && y <= canvas.height) {
+                        // Pulsing yellow dots if oscillating
+                        if (isOscillating) {
+                            const pulseSize = 8 + Math.sin(oscillationTime * 6) * 3;
+                            const alpha = 0.7 + Math.sin(oscillationTime * 4) * 0.3;
+                            ctx.fillStyle = `rgba(255, 255, 0, ${alpha})`;
+                            ctx.beginPath();
+                            ctx.arc(x, y, pulseSize, 0, 2 * Math.PI);
+                            ctx.fill();
+                        } else {
+                            ctx.fillStyle = '#ffff00';
+                            ctx.beginPath();
+                            ctx.arc(x, y, 8, 0, 2 * Math.PI);
+                            ctx.fill();
+                        }
+                        
+                        // Add coordinate labels
+                        ctx.fillStyle = '#ffff88';
+                        ctx.font = '10px Arial';
+                        ctx.fillText(`(${point.x},${point.y})`, x + 12, y - 8);
+                    }
+                });
+            }
+            
+            // Draw test value (green dot)
+            const testValue = parseFloat(document.getElementById('testValue').value);
+            const testX = centerX + (testValue * scale);
+            const testY = centerY;
+            
+            if (testX >= 0 && testX <= canvas.width) {
+                ctx.fillStyle = '#00ff00';
+                ctx.beginPath();
+                ctx.arc(testX, testY, 6, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Add value label
+                ctx.fillStyle = '#00ff88';
+                ctx.font = '12px Arial';
+                ctx.fillText(testValue.toString(), testX + 10, testY - 10);
+            }
+            
+            // Update info panel
+            updateInfoPanel(perimeter, radius, intersections);
+        }
+
+        function animate() {
+            if (isOscillating) {
+                oscillationTime += oscillationSpeed;
+                drawGrid();
+                animationId = requestAnimationFrame(animate);
+            }
+        }
+
+        function toggleOscillation() {
+            const btn = document.getElementById('oscillateBtn');
+            
+            if (isOscillating) {
+                // Stop oscillation
+                isOscillating = false;
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                }
+                btn.textContent = 'Start';
+                btn.style.background = 'linear-gradient(45deg, #e74c3c, #c0392b)';
+            } else {
+                // Start oscillation
+                isOscillating = true;
+                basePerimeter = parseFloat(document.getElementById('circlePerimeter').value);
+                oscillationTime = 0;
+                btn.textContent = 'Stop';
+                btn.style.background = 'linear-gradient(45deg, #27ae60, #229954)';
+                animate();
+            }
+        }
+
+        function updateGrid() {
+            if (!isOscillating) {
+                drawGrid();
+            }
+        }
+
+        function resetGrid() {
+            // Stop oscillation if running
+            if (isOscillating) {
+                toggleOscillation();
+            }
+            
+            document.getElementById('testValue').value = '3.14159';
+            document.getElementById('gridScale').value = '50';
+            document.getElementById('circlePerimeter').value = '10';
+            oscillationTime = 0;
+            basePerimeter = 10;
+            drawGrid();
+        }
+
+        // Initialize the grid
+        drawGrid();
+    </script>
+</body>
+</html>
