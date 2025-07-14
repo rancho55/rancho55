@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Alien Tech GPX Tracker v4.0: Ultra Accurate</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-providers/leaflet-providers.css" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800&display=swap');
+    :root {
+      --alien-cyan: #00ffe7;
+      --alien-blue: #0ff4;
+      --alien-dark: #0f2027;
+      --alien-mid: #2c5364;
+      --alien-yellow: #ffeb3b;
+      --alien-green: #00ff88;
+      --alien-red: #ff4444;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin:0; font-family:'Orbitron', 'Consolas', monospace;
+      background:linear-gradient(135deg, var(--alien-dark) 0%, var(--alien-mid) 50%, #1a3b4d 100%);
+      color:#bafff5; letter-spacing:1.2px;
+      overflow-x:hidden; min-height:100vh;
+      position:relative;
+    }
+    body::before {
+      content:''; position:fixed; top:0; left:0; width:100%; height:100%;
+      background:radial-gradient(circle at 20% 80%, var(--alien-cyan)22, transparent 50%),
+                 radial-gradient(circle at 80% 20%, var(--alien-blue)22, transparent 50%);
+      pointer-events:none; z-index:-1; opacity:0.1;
+      animation: alienAmbient 8s ease-in-out infinite alternate;
+    }
+    @keyframes alienAmbient {
+      0% { opacity:0.05; transform:scale(0.8) rotate(0deg); }
+      100% { opacity:0.15; transform:scale(1.2) rotate(5deg); }
+    }
+
+    .version-badge {
+      position:absolute; top:10px; right:10px; z-index:1000;
+      background:linear-gradient(135deg, var(--alien-cyan), var(--alien-green));
+      color:#000; padding:6px 12px; border-radius:20px;
+      font-size:12px; font-weight:800; letter-spacing:1px;
+      box-shadow:0 0 20px var(--alien-cyan);
+      animation: versionPulse 3s infinite;
+    }
+    @keyframes versionPulse {
+      0%, 100% { box-shadow:0 0 20px var(--alien-cyan); }
+      50% { box-shadow:0 0 40px var(--alien-cyan), 0 0 60px var(--alien-green); }
+    }
+
+    h3 {
+      margin:0 0 8px 0; color:var(--alien-cyan);
+      text-shadow:0 0 12px var(--alien-cyan), 0 0 4px #fff;
+      font-weight:700; font-size:20px;
+    }
+    #map {
+      height:70vh; min-height:220px; width:100vw;
+      box-shadow:0 0 50px 15px var(--alien-cyan), 0 0 120px 25px var(--alien-blue), 0 0 0 5px var(--alien-blue) inset;
+      border-radius:25px; margin-bottom:12px;
+      animation: alienGlow 4s infinite alternate;
+      position:relative; overflow:hidden;
+    }
+    @keyframes alienGlow {
+      0% { box-shadow:0 0 50px 15px var(--alien-cyan), 0 0 120px 25px var(--alien-blue), 0 0 0 5px var(--alien-blue) inset; }
+      100% { box-shadow:0 0 100px 30px var(--alien-cyan), 0 0 240px 50px var(--alien-blue), 0 0 0 10px var(--alien-cyan) inset; }
+    }
+
+    .panel {
+      padding:20px 26px 12px 26px;
+      background:rgba(0,30,40,0.92);
+      border-radius:0 0 25px 25px;
+      box-shadow:0 0 50px var(--alien-cyan) inset, 0 5px 30px rgba(0,255,231,0.3);
+      margin-bottom:12px;
+      position:relative; z-index:2;
+      border:2px solid rgba(0,255,231,0.3);
+    }
+
+    .alien-btn, .export-btn, .waypoint-btn, .compass-btn, .maps-btn, select {
+      background:linear-gradient(135deg, var(--alien-cyan), var(--alien-green) 70%, var(--alien-cyan));
+      color:#101a1c; border:none; border-radius:12px; padding:12px 24px;
+      font-size:16px; font-weight:700; cursor:pointer; margin:12px 10px 12px 0;
+      box-shadow:0 0 15px var(--alien-cyan), 0 0 3px #fff inset;
+      text-shadow:0 0 3px #000;
+      transition:all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      outline:none; position:relative; overflow:hidden;
+      font-family:inherit; letter-spacing:0.5px;
+    }
+    .alien-btn::before, .export-btn::before, .waypoint-btn::before, .compass-btn::before, .maps-btn::before {
+      content:''; position:absolute; top:0; left:-100%; width:100%; height:100%;
+      background:linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      transition:left 0.5s;
+    }
+    .alien-btn:hover::before, .export-btn:hover::before, .waypoint-btn:hover::before,
+    .compass-btn:hover::before, .maps-btn:hover::before {
+      left:100%;
+    }
+
+    .alien-btn:disabled {
+      background:#333; color:#666; cursor:not-allowed;
+      box-shadow:none; opacity:0.5;
+    }
+    .alien-btn:hover:not(:disabled), .export-btn:hover, .waypoint-btn:hover,
+    .compass-btn:hover, .maps-btn:hover {
+      background:linear-gradient(135deg, var(--alien-green), var(--alien-cyan) 70%, var(--alien-green));
+      box-shadow:0 0 30px var(--alien-cyan), 0 0 60px var(--alien-green), 0 0 8px #fff inset;
+      transform:scale(1.05) translateY(-2px);
+    }
+
+    .export-btn {
+      background:linear-gradient(135deg, #00e0ff, var(--alien-cyan), #00b8ff);
+    }
+    .waypoint-btn {
+      background:linear-gradient(135deg, var(--alien-yellow), #ffaa00, var(--alien-yellow));
+      color:#1a1a1a;
+    }
+    .maps-btn {
+      background:linear-gradient(135deg, #007aff, #5ac8fa, #007aff);
+      color:#fff;
+    }
+
+    select {
+      background:rgba(16,26,28,0.95); color:var(--alien-cyan);
+      border:2px solid var(--alien-cyan);
+      font-family:inherit; margin-left:10px; font-size:15px;
+      border-radius:8px; padding:8px 12px;
+      box-shadow:0 0 10px var(--alien-cyan);
+    }
+    select:focus {
+      outline:none; box-shadow:0 0 20px var(--alien-cyan);
+    }
+
+    #distance, #accuracy, #coords, #gyroData, #baroData, #weatherInfo, #trackStats {
+      font-size:17px; margin-top:6px; color:#bafff5;
+      text-shadow:0 0 3px var(--alien-blue);
+      line-height:1.4;
+    }
+
+    .stats-grid {
+      display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
+      gap:15px; margin-top:15px;
+    }
+    .stat-item {
+      background:rgba(0,255,231,0.1); padding:10px 15px; border-radius:10px;
+      border:1px solid rgba(0,255,231,0.3);
+      text-align:center;
+    }
+    .stat-label {
+      font-size:12px; opacity:0.8; margin-bottom:5px;
+      text-transform:uppercase; letter-spacing:1px;
+    }
+    .stat-value {
+      font-size:18px; font-weight:700; color:var(--alien-cyan);
+      text-shadow:0 0 5px var(--alien-cyan);
+    }
+
+    .weather-panel {
+      background:rgba(10,40,60,0.8); padding:15px 25px; margin:12px 0;
+      border-radius:20px;
+      box-shadow:0 0 25px var(--alien-cyan), 0 0 50px rgba(0,255,231,0.2);
+      border:2px solid var(--alien-cyan);
+      animation: alienWeather 3s infinite alternate;
+      position:relative; overflow:hidden;
+    }
+    .weather-panel::before {
+      content:''; position:absolute; top:0; left:-100%; width:100%; height:100%;
+      background:linear-gradient(90deg, transparent, rgba(0,255,231,0.1), transparent);
+      animation: weatherSweep 4s infinite;
+    }
+    @keyframes weatherSweep {
+      0% { left:-100%; }
+      100% { left:100%; }
+    }
+    @keyframes alienWeather {
+      0% { box-shadow:0 0 25px var(--alien-cyan), 0 0 50px rgba(0,255,231,0.2); }
+      100% { box-shadow:0 0 50px var(--alien-cyan), 0 0 100px rgba(0,255,231,0.4); }
+    }
+
+    .accel-panel, .elev-panel {
+      width: 100vw;
+      background:rgba(0,20,40,0.85);
+      box-shadow:0 0 30px var(--alien-cyan) inset, 0 5px 20px rgba(0,255,231,0.2);
+      border-radius: 0 0 25px 25px; margin-top: 0; padding-bottom: 20px;
+      margin-bottom:15px; border:2px solid rgba(0,255,231,0.2);
+    }
+    .accel-header, .elev-header {
+      font-size: 22px; font-weight: 800; color:var(--alien-cyan);
+      padding: 20px 26px 10px 26px;
+      text-shadow:0 0 15px var(--alien-cyan);
+      letter-spacing:2px; position:relative;
+    }
+    .accel-header::after, .elev-header::after {
+      content:''; position:absolute; bottom:0; left:26px; right:26px; height:2px;
+      background:linear-gradient(90deg, transparent, var(--alien-cyan), transparent);
+    }
+
+    .accel-info, .elev-info {
+      display: flex; flex-wrap: wrap; gap: 25px; padding: 0 26px 12px 26px;
+      font-size: 16px; color: #bafff5;
+    }
+
+    #accelCanvas, #elevCanvas {
+      display: block; margin: 0 auto; background:rgba(0,255,255,0.05);
+      border: 3px solid var(--alien-cyan); border-radius: 15px; margin-top: 12px;
+      box-shadow:0 0 25px var(--alien-cyan) inset, 0 0 50px rgba(0,255,231,0.2);
+      animation: alienPanel 3s infinite alternate;
+    }
+    @keyframes alienPanel {
+      0% { box-shadow:0 0 25px var(--alien-cyan) inset, 0 0 50px rgba(0,255,231,0.2); }
+      100% { box-shadow:0 0 50px var(--alien-cyan) inset, 0 0 100px rgba(0,255,231,0.4); }
+    }
+
+    .compass-panel {
+      display:flex; flex-direction:column; align-items:center;
+      justify-content:center; margin:25px 0;
+      background:rgba(0,30,40,0.7); padding:20px; border-radius:20px;
+      border:2px solid rgba(0,255,231,0.3);
+    }
+    #compassCanvas {
+      background:rgba(0,255,255,0.02); border:3px solid var(--alien-cyan);
+      border-radius:50%; margin:12px;
+      box-shadow:0 0 30px var(--alien-cyan) inset, 0 0 60px rgba(0,255,231,0.3);
+      animation: alienPanel 3s infinite alternate;
+    }
+
+    #alien-tip {
+      color:var(--alien-yellow); font-size:15px; margin-top:10px;
+      text-shadow:0 0 3px var(--alien-yellow);
+      padding:10px; background:rgba(255,235,59,0.1); border-radius:8px;
+      border:1px solid rgba(255,235,59,0.3);
+    }
+
+    #calibModal {
+      display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:999;
+      background:rgba(0,0,0,0.95); justify-content:center; align-items:center;
+      flex-direction:column; text-align:center;
+      backdrop-filter:blur(10px);
+    }
+    #calibModal.active {display:flex;}
+    #calibModal h2 {
+      color:var(--alien-cyan); text-shadow:0 0 20px var(--alien-cyan);
+      font-size:32px; font-weight:800; margin-bottom:20px;
+    }
+    #calibModal .calib-instr {
+      color:var(--alien-yellow); font-size:22px; margin:25px 0;
+      max-width:400px; line-height:1.5;
+    }
+    #calibModal .calib-progress {
+      color:var(--alien-green); font-size:20px; margin:15px 0;
+      font-weight:600;
+    }
+    #calibModal button {margin-top:30px;}
+
+    .performance-indicator {
+      position:fixed; top:50px; right:15px; z-index:1000;
+      background:rgba(0,0,0,0.8); padding:8px 12px; border-radius:10px;
+      font-size:12px; border:1px solid var(--alien-cyan);
+      box-shadow:0 0 10px var(--alien-cyan);
+    }
+
+    @media (max-width: 600px) {
+      .panel {padding:15px 8px;}
+      .accel-header, .accel-info, .elev-header, .elev-info {
+        padding: 15px 12px; font-size: 14px;
+      }
+      #accelCanvas, #elevCanvas {width: 95vw !important;}
+      .stats-grid {grid-template-columns:1fr;}
+      .alien-btn, .export-btn, .waypoint-btn, .compass-btn, .maps-btn {
+        padding:10px 16px; font-size:14px; margin:8px 6px 8px 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="version-badge">v4.0 ULTRA</div>
+  <div class="performance-indicator" id="perfIndicator">FPS: -- | GPS: --</div>
+
+  <div class="panel">
+    <button class="alien-btn" id="requestMotionBtn">🛸 Allow Motion Access</button>
+    <button class="alien-btn" id="startBtn" disabled>▶️ Start Tracking</button>
+    <button class="alien-btn" id="stopBtn" disabled>⏹️ Stop Tracking</button>
+    <button class="alien-btn" id="resetBtn">🔄 Reset</button>
+    <button class="export-btn" id="exportBtn">📁 Export GPX</button>
+    <button class="waypoint-btn" id="addWptBtn">📍 Add Waypoint</button>
+    <button class="maps-btn" id="openAppleMapsBtn">🍎 Open in Apple Maps</button>
+
+    <select id="mapStyle">
+      <option value="CartoDB.Positron">CartoDB Positron (Apple-like)</option>
+      <option value="CartoDB.DarkMatter">CartoDB Dark Matter</option>
+      <option value="OpenStreetMap.Mapnik">OpenStreetMap (Standard)</option>
+      <option value="OpenTopoMap">OpenTopoMap (Terrain)</option>
+      </select>
+
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-label">GPS Distance</div>
+        <div class="stat-value" id="distance">0.00 ft</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Accuracy</div>
+        <div class="stat-value" id="accuracy">--</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Speed</div>
+        <div class="stat-value" id="speed">0.0 mph</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Duration</div>
+        <div class="stat-value" id="duration">00:00:00</div>
+      </div>
+    </div>
+
+    <div id="coords">📍 Coordinates: N/A</div>
+    <div>🌀 Gyro: <span id="gyroData">x:0, y:0, z:0</span></div>
+    <div>📊 Barometer: <span id="baroData">--</span></div>
+
+    <div id="alien-tip">
+      👽 <strong>PRO TIP v4.0:</strong> Enable GPS, Wi-Fi & Motion sensors. Go outside and wait for accuracy to improve. New: Enhanced sensor fusion & Apple Maps integration!
+    </div>
+  </div>
+
+  <div id="map"></div>
+
+  <div class="weather-panel">
+    <h3>🌤️ Live Weather Conditions</h3>
+    <div id="weatherInfo">Loading advanced weather data...</div>
+  </div>
+
+  <div class="accel-panel">
+    <div class="accel-header">🚀 Accelerometer Trail & Data (v4.0 Enhanced)</div>
+    <canvas id="accelCanvas" width="350" height="200"></canvas>
+    <div class="accel-info">
+      <span id="accelDistance">Accelerometer Distance: 0.00 feet (visual trail)</span>
+      <span id="accelData">x: 0, y: 0, z: 0 (calibrated)</span>
+    </div>
+  </div>
+
+  <div class="elev-panel">
+    <div class="elev-header">⛰️ Enhanced Elevation Profile</div>
+    <canvas id="elevCanvas" width="350" height="100"></canvas>
+    <div class="elev-info">
+      <span id="elevMin">Min: --</span>
+      <span id="elevMax">Max: --</span>
+      <span id="elevGain">Total Gain: --</span>
+    </div>
+  </div>
+
+  <div class="compass-panel">
+    <canvas id="compassCanvas" width="120" height="120"></canvas>
+    <div id="compassLabel">🧭 Heading: 0° (Magnetic North)</div>
+    <button class="compass-btn alien-btn" id="toggleNorthBtn">Switch to True North</button>
+  </div>
+
+  <div id="calibModal">
+    <div>
+      <h2>🛸 ALIEN CALIBRATION v4.0</h2>
+      <div class="calib-instr" id="calibInstr">
+        Place your device <strong>FLAT</strong>, screen <strong>UP</strong>, and keep perfectly still.<br>
+        Advanced calibration will start automatically.
+      </div>
+      <div class="calib-progress" id="calibProgress">Initializing quantum sensors...</div>
+      <button class="alien-btn" id="calibSkipBtn" style="display:none;">Skip Calibration</button>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-providers/leaflet-providers.js"></script>
+  <script>
+    // --- V4.0 ENHANCED FEATURES ---
+    let startTime = null, trackingDuration = 0, currentSpeed = 0;
+    let frameCount = 0, lastFrameTime = Date.now(), currentFPS = 0;
+
+    // Performance monitoring
+    function updatePerformance() {
+      frameCount++;
+      const now = Date.now();
+      if (now - lastFrameTime >= 1000) {
+        currentFPS = Math.round(frameCount * 1000 / (now - lastFrameTime));
+        frameCount = 0;
+        lastFrameTime = now;
+
+        const gpsStatus = watchId ? 'ACTIVE' : 'IDLE';
+        document.getElementById('perfIndicator').textContent =
+          `FPS: ${currentFPS} | GPS: ${gpsStatus}`;
+      }
+      requestAnimationFrame(updatePerformance);
+    }
+
+    // Duration tracking
+    function updateDuration() {
+      if (startTime && watchId) {
+        trackingDuration = Date.now() - startTime;
+        const hours = Math.floor(trackingDuration / 3600000);
+        const minutes = Math.floor((trackingDuration % 3600000) / 60000);
+        const seconds = Math.floor((trackingDuration % 60000) / 1000);
+        document.getElementById('duration').textContent =
+          `${hours.toString().padStart(2,'0')}:${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+      }
+    }
+    setInterval(updateDuration, 1000); // Update duration every second
+
+    // --- MAP LAYERS ---
+    // Using Leaflet.Providers for easy access to many free map styles
+    const mapLayers = {
+      // Free "Apple-style" options
+      'CartoDB.Positron': L.tileLayer.provider('CartoDB.Positron'),
+      'CartoDB.DarkMatter': L.tileLayer.provider('CartoDB.DarkMatter'),
+
+      // Standard OpenStreetMap
+      'OpenStreetMap.Mapnik': L.tileLayer.provider('OpenStreetMap.Mapnik'),
+
+      // Topographic map
+      'OpenTopoMap': L.tileLayer.provider('OpenTopoMap'),
+
+      // The original Apple Maps tiles (kept for reference, but require valid accessKey)
+      // apple: L.tileLayer('https://sat-cdn{s}.apple-mapkit.com/tile?style=7&size=1&scale=1&z={z}&x={x}&y={y}&v=9114&accessKey=1635767156_5748011552171362745_%2FgCuTkqOBAmgIlPjd8kicON5f6TjT7pnAJQqNVEb7o8%3D', {
+      //   subdomains: ['1', '2', '3', '4'],
+      //   attribution: '© Apple Maps',
+      //   maxZoom: 19
+      // }),
+      // appleSat: L.tileLayer('https://sat-cdn{s}.apple-mapkit.com/tile?style=6&size=1&scale=1&z={z}&x={x}&y={y}&v=9114&accessKey=1635767156_5748011552171362745_%2FgCuTkqOBAmgIlPjd8kicON5f6TjT7pnAJQqNVEb7o8%3D', {
+      //   subdomains: ['1', '2', '3', '4'],
+      //   attribution: '© Apple Maps',
+      //   maxZoom: 19
+      // }),
+    };
+
+    let map, trailLine, totalDistance = 0, lastLatLng = null, watchId = null, marker = null,
+        trailCoordinates = [], elevProfile = [], waypoints = [], lastGPSTime = 0;
+
+    // Increased ACCURACY_THRESHOLD for better general usability, especially indoors or in urban areas.
+    // Original: 25 meters. New: 50 meters.
+    const MIN_DISTANCE = 2, MAX_DISTANCE = 50, GPS_AVG_WINDOW = 5, GPS_SMOOTH_ALPHA = 0.7, ACCURACY_THRESHOLD = 50;
+    let isDeviceMoving = false, accelerationThreshold = 0.15, accelWindow = [], ACCEL_WINDOW_SIZE = 10;
+    // Removed 'allowGPS = false' here. GPS tracking will now always attempt to get location,
+    // though filtering based on accuracy will still apply.
+
+    // Enhanced sensor data
+    let lastGyro = {x:0, y:0, z:0}, lastAccel = {x:0, y:0, z:0};
+    let calib = { zUp: null, zDown: null, offset: 0, gain: 1, done: false };
+    let filteredAccel = {x:0, y:0, z:0};
+    const alpha = 0.25; // Enhanced smoothing
+
+    // Enhanced calibration with better UX
+    function showCalibModal() {
+      const modal = document.getElementById('calibModal');
+      const instr = document.getElementById('calibInstr');
+      const progress = document.getElementById('calibProgress');
+      const skipBtn = document.getElementById('calibSkipBtn');
+
+      modal.classList.add('active');
+      skipBtn.style.display = 'none';
+
+      let upSamples = [], downSamples = [];
+      instr.innerHTML = "Place your device <strong>FLAT</strong>, screen <strong>UP</strong>, and keep perfectly still.<br>Advanced calibration will start automatically.";
+      progress.innerHTML = "🛸 Quantum sensor initialization: 0%";
+
+      let phase = 0, t = 0;
+      let interval = setInterval(() => {
+        if (phase === 0) {
+          if (t < 25) { // Extended calibration time
+            upSamples.push(lastAccel.z);
+            progress.innerHTML = `🛸 Collecting UP orientation: ${(t/25*100).toFixed(0)}%`;
+            t++;
+          } else {
+            phase = 1; t = 0;
+            instr.innerHTML = "Now place your device <strong>FLAT</strong>, screen <strong>DOWN</strong>, and keep perfectly still.";
+            progress.innerHTML = "🔄 Collecting DOWN orientation: 0%";
+          }
+        } else if (phase === 1) {
+          if (t < 25) {
+            downSamples.push(lastAccel.z);
+            progress.innerHTML = `🔄 Collecting DOWN orientation: ${(t/25*100).toFixed(0)}%`;
+            t++;
+          } else {
+            clearInterval(interval);
+            // Enhanced calibration calculation
+            calib.zUp = upSamples.reduce((a,b)=>a+b,0)/upSamples.length;
+            calib.zDown = downSamples.reduce((a,b)=>a+b,0)/downSamples.length;
+            calib.offset = (calib.zUp + calib.zDown) / 2;
+            calib.gain = Math.abs(calib.zUp - calib.zDown) / 2;
+            calib.done = true;
+            modal.classList.remove('active');
+
+            // Enhanced success feedback
+            const calibQuality = calib.gain > 8 ? "EXCELLENT" : calib.gain > 6 ? "GOOD" : "FAIR";
+            alert(`🛸 ALIEN CALIBRATION v4.0 COMPLETE!\n\n✅ Quality: ${calibQuality}\n📊 Offset: ${calib.offset.toFixed(3)}\n⚡ Gain: ${calib.gain.toFixed(3)}\n\n🚀 Enhanced motion tracking activated!`);
+          }
+        }
+      }, 80); // Faster updates
+
+      skipBtn.onclick = () => {
+        clearInterval(interval);
+        calib.done = false;
+        modal.classList.remove('active');
+      };
+      setTimeout(() => { skipBtn.style.display = 'inline-block'; }, 2000);
+    }
+
+    // Enhanced calibration and filtering
+    function calibrateAndFilter(raw) {
+      let x = calib.done ? (raw.x - calib.offset) / Math.max(calib.gain, 0.1) : raw.x;
+      let y = calib.done ? (raw.y - calib.offset) / Math.max(calib.gain, 0.1) : raw.y;
+      let z = calib.done ? (raw.z - calib.offset) / Math.max(calib.gain, 0.1) : raw.z;
+
+      // Enhanced low-pass filter
+      filteredAccel.x = alpha * x + (1 - alpha) * filteredAccel.x;
+      filteredAccel.y = alpha * y + (1 - alpha) * filteredAccel.y;
+      filteredAccel.z = alpha * z + (1 - alpha) * filteredAccel.z;
+
+      return {...filteredAccel};
+    }
+
+    // Enhanced accelerometer trail with better visuals
+    const canvas = document.getElementById('accelCanvas');
+    const ctx = canvas.getContext('2d');
+    const CANVAS_CENTER = { x: canvas.width / 2, y: canvas.height / 2 };
+    let accelTrail = [ {...CANVAS_CENTER} ], accelDistance = 0, prevAccelPoint = {...CANVAS_CENTER},
+        lastAccelForTrail = {x: 0, y: 0, z: 0};
+    const ACCEL_MOVEMENT_THRESHOLD = 0.12;
+
+    function drawAccelTrail() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Enhanced trail with gradient
+      if (accelTrail.length > 1) {
+        for (let i = 1; i < accelTrail.length; i++) {
+          const alpha = i / accelTrail.length;
+          ctx.beginPath();
+          ctx.moveTo(accelTrail[i-1].x, accelTrail[i-1].y);
+          ctx.lineTo(accelTrail[i].x, accelTrail[i].y);
+          ctx.strokeStyle = `rgba(0, 255, 231, ${alpha * 0.8})`;
+          ctx.lineWidth = 2 + alpha * 2;
+          ctx.shadowColor = "#00ffe7";
+          ctx.shadowBlur = 5 + alpha * 5;
+          ctx.stroke();
+        }
+      }
+      ctx.shadowBlur = 0;
+    }
+
+    function updateAccelDistanceDisplay() {
+      document.getElementById('accelDistance').innerText =
+        'Accelerometer Distance: ' + accelDistance.toFixed(2) + ' feet (visual trail)';
+    }
+
+    function updateAccelDataDisplay() {
+      document.getElementById('accelData').innerText =
+        `x: ${lastAccelForTrail.x.toFixed(3)}, y: ${lastAccelForTrail.y.toFixed(3)}, z: ${lastAccelForTrail.z.toFixed(3)}`;
+    }
+
+    // --- Compass ---
+    let compassHeading = 0, useTrueNorth = false, magDeclination = 0; // magDeclination would ideally be fetched based on location
+    const compassCanvas = document.getElementById('compassCanvas');
+    const compassCtx = compassCanvas.getContext('2d');
+    function handleOrientation(event) {
+      let heading;
+      if (useTrueNorth && event.webkitCompassHeading !== undefined) {
+        heading = event.webkitCompassHeading;
+      } else if (event.absolute && event.alpha !== null) {
+        heading = 360 - event.alpha;
+      } else if (event.alpha !== null) {
+        heading = 360 - event.alpha;
+      } else {
+        heading = 0;
+      }
+
+      if (useTrueNorth && event.webkitCompassHeading === undefined) {
+          // A more robust way to get magnetic declination would be needed for true north calculation
+          // For now, we'll assume it's handled by webkitCompassHeading or rely on device orientation
+          // if a true north reading is not directly provided.
+          // In a real application, you'd fetch this from an API like geomag.js or similar.
+          // For demonstration, we'll keep it simple as ttracker.html did.
+          heading += magDeclination;
+      }
+      compassHeading = (heading + 360) % 360;
+      drawCompass();
+    }
+    function drawCompass() {
+      compassCtx.clearRect(0,0,120,120);
+      compassCtx.beginPath(); compassCtx.arc(60,60,50,0,2*Math.PI);
+      compassCtx.strokeStyle="#00ffe7"; compassCtx.lineWidth=4; compassCtx.shadowColor="#00ffe7"; compassCtx.shadowBlur=10; compassCtx.stroke(); compassCtx.shadowBlur=0;
+      compassCtx.save(); compassCtx.translate(60,60);
+      compassCtx.rotate((compassHeading)*Math.PI/180); // Adjusted rotation
+      compassCtx.beginPath(); compassCtx.moveTo(0,0); compassCtx.lineTo(0,-40);
+      compassCtx.strokeStyle="#ffeb3b"; compassCtx.lineWidth=5; compassCtx.stroke();
+      compassCtx.beginPath(); compassCtx.moveTo(0,0); compassCtx.lineTo(0,30);
+      compassCtx.strokeStyle="#00ffe7"; compassCtx.lineWidth=3; compassCtx.stroke();
+      compassCtx.restore();
+      compassCtx.font="18px Orbitron, Arial"; compassCtx.fillStyle="#00ffe7";
+      compassCtx.textAlign="center"; compassCtx.fillText("N",60,25);
+      document.getElementById('compassLabel').textContent =
+        `🧭 Heading: ${compassHeading.toFixed(0)}° (${useTrueNorth ? "True North":"Magnetic North"})`;
+    }
+    document.getElementById('toggleNorthBtn').onclick = function() {
+      useTrueNorth = !useTrueNorth;
+      this.textContent = useTrueNorth ? "Switch to Magnetic North" : "Switch to True North";
+      drawCompass();
+    };
+
+    // --- Barometer ---
+    let baroAvailable = false, baroAlt = null, baroAlt0 = null;
+    function setupBarometer() {
+      if ('Barometer' in window) {
+        try {
+          let baro = new Barometer({frequency: 1}); // Increased frequency
+          baro.addEventListener('reading', () => {
+            // Using standard atmospheric model for altitude calculation
+            let alt = 44330 * (1 - Math.pow(baro.pressure/1013.25, 1/5.255));
+            if (!baroAlt0) baroAlt0 = alt; // Set initial altitude reference
+            baroAlt = alt - baroAlt0; // Relative altitude
+            document.getElementById('baroData').textContent = `Alt: ${baroAlt.toFixed(1)} m (${baro.pressure.toFixed(1)} hPa)`;
+            if (watchId) { elevProfile.push(baroAlt); drawElevationProfile(); }
+          });
+          baro.start();
+          baroAvailable = true;
+        } catch (e) { document.getElementById('baroData').textContent = 'Not supported'; }
+      } else {
+        document.getElementById('baroData').textContent = 'Not supported';
+      }
+    }
+
+    // --- Elevation Profile ---
+    const elevCanvas = document.getElementById('elevCanvas');
+    const elevCtx = elevCanvas.getContext('2d');
+    function drawElevationProfile() {
+      elevCtx.clearRect(0,0,elevCanvas.width,elevCanvas.height);
+      if (!elevProfile.length) return;
+
+      let min = Math.min(...elevProfile), max = Math.max(...elevProfile), gain = 0;
+      for (let i=1;i<elevProfile.length;i++) {
+        if (elevProfile[i] > elevProfile[i-1]) {
+          gain += elevProfile[i]-elevProfile[i-1];
+        }
+      }
+
+      document.getElementById('elevMin').textContent = 'Min: '+min.toFixed(1)+' m';
+      document.getElementById('elevMax').textContent = 'Max: '+max.toFixed(1)+' m';
+      document.getElementById('elevGain').textContent = 'Total Gain: '+gain.toFixed(1)+' m';
+
+      elevCtx.beginPath();
+      // Ensure there's a range to avoid division by zero
+      const range = max - min + 0.01;
+      for(let i=0;i<elevProfile.length;i++) {
+        let x = i/(elevProfile.length-1)*(elevCanvas.width-20)+10;
+        let y = elevCanvas.height-10-((elevProfile[i]-min)/range)*(elevCanvas.height-20);
+        if (i===0) elevCtx.moveTo(x,y); else elevCtx.lineTo(x,y);
+      }
+      elevCtx.strokeStyle="#00ffe7"; elevCtx.lineWidth=3; elevCtx.shadowColor="#00ffe7"; elevCtx.shadowBlur=6; elevCtx.stroke(); elevCtx.shadowBlur = 0; // Reset shadow
+    }
+
+
+    // --- Motion Permission ---
+    document.getElementById('requestMotionBtn').onclick = function() {
+      if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+        DeviceMotionEvent.requestPermission().then(response => {
+          if (response === 'granted') {
+            window.addEventListener('devicemotion', handleMotion);
+            window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+            window.addEventListener('deviceorientation', handleOrientation, true);
+            document.getElementById('startBtn').disabled = false;
+            showCalibModal();
+          } else {
+            alert('Motion sensor access denied. Some features may not work.');
+          }
+        }).catch(console.error);
+      } else {
+        // Handle non-iOS 13+ devices or browsers that don't require explicit permission
+        window.addEventListener('devicemotion', handleMotion);
+        window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+        window.addEventListener('deviceorientation', handleOrientation, true);
+        document.getElementById('startBtn').disabled = false;
+        showCalibModal();
+      }
+    };
+
+    function handleMotion(event) {
+      // Accelerometer
+      const acc = event.acceleration && event.acceleration.x !== null ? event.acceleration : event.accelerationIncludingGravity;
+      if (acc) {
+        lastAccel = {x: acc.x || 0, y: acc.y || 0, z: acc.z || 0};
+        let filtered = calibrateAndFilter(lastAccel);
+        // Rolling window for stop detection (sensor fusion)
+        let totalAcc = Math.sqrt(filtered.x*filtered.x + filtered.y*filtered.y + filtered.z*filtered.z);
+        accelWindow.push(totalAcc);
+        if (accelWindow.length > ACCEL_WINDOW_SIZE) accelWindow.shift();
+        let meanAcc = accelWindow.reduce((a,b)=>a+b,0)/accelWindow.length;
+        isDeviceMoving = meanAcc > accelerationThreshold;
+        // --- IMPORTANT CHANGE ---
+        // Removed 'allowGPS = isDeviceMoving;' here.
+        // This ensures that GPS updates are processed regardless of whether
+        // the accelerometer detects movement, making the tracker more reliable
+        // when stationary or moving very slowly.
+        lastAccelForTrail = filtered;
+        updateAccelDataDisplay();
+        if (totalAcc > ACCEL_MOVEMENT_THRESHOLD) {
+          const SCALE = 8;
+          let newPoint = {
+            x: prevAccelPoint.x + filtered.x * SCALE,
+            y: prevAccelPoint.y - filtered.y * SCALE
+          };
+          // Keep points within canvas bounds
+          newPoint.x = Math.max(0, Math.min(canvas.width, newPoint.x));
+          newPoint.y = Math.max(0, Math.min(canvas.height, newPoint.y));
+          accelTrail.push(newPoint);
+          let dx = newPoint.x - prevAccelPoint.x;
+          let dy = newPoint.y - prevAccelPoint.y;
+          // Scale visual distance to be more meaningful, 0.2 is arbitrary visual scaling
+          let segmentDist = Math.sqrt(dx*dx + dy*dy) * 0.2;
+          accelDistance += segmentDist;
+          prevAccelPoint = newPoint;
+          if (accelTrail.length > 200) accelTrail.shift(); // Limit trail length
+          drawAccelTrail();
+          updateAccelDistanceDisplay();
+        }
+      }
+      // Gyroscope
+      if (event.rotationRate) {
+        lastGyro = {x: event.rotationRate.alpha || 0, y: event.rotationRate.beta || 0, z: event.rotationRate.gamma || 0};
+        document.getElementById('gyroData').textContent = `x:${lastGyro.x.toFixed(2)}, y:${lastGyro.y.toFixed(2)}, z:${lastGyro.z.toFixed(2)}`;
+      }
+    }
+
+    // --- GPS Smoothing and Filtering ---
+    let gpsBuffer = [];
+    function smoothGPS(lat, lng) {
+      gpsBuffer.push([lat, lng]);
+      if (gpsBuffer.length > GPS_AVG_WINDOW) gpsBuffer.shift();
+      let sumLat = 0, sumLng = 0, weight = 1, totalWeight = 0;
+      for (let i = gpsBuffer.length-1; i >= 0; i--) {
+        sumLat += gpsBuffer[i][0] * weight;
+        sumLng += gpsBuffer[i][1] * weight;
+        totalWeight += weight;
+        weight *= GPS_SMOOTH_ALPHA;
+      }
+      return [sumLat/totalWeight, sumLng/totalWeight];
+    }
+
+    // --- WEATHER (wttr.in, no API key, CORS workaround via JSONP) ---
+    const weatherInfo = document.getElementById('weatherInfo');
+    let lastWeatherUpdateCoords = {lat: null, lon: null};
+    const WEATHER_UPDATE_THRESHOLD_KM = 5; // Update weather if moved by this much
+    const WEATHER_UPDATE_INTERVAL_MS = 5 * 60 * 1000; // Update weather every 5 minutes
+    let lastWeatherUpdateTime = 0;
+
+    function fetchWeatherByCoords(lat, lon) {
+      const now = Date.now();
+      if (lastWeatherUpdateCoords.lat !== null && lastWeatherUpdateCoords.lon !== null) {
+        const distanceMoved = getDistanceFromLatLng([lastWeatherUpdateCoords.lat, lastWeatherUpdateCoords.lon], [lat, lon]) / 1000; // in km
+        if (distanceMoved < WEATHER_UPDATE_THRESHOLD_KM && (now - lastWeatherUpdateTime < WEATHER_UPDATE_INTERVAL_MS)) {
+          return; // Don't fetch if not moved much or not enough time has passed
+        }
+      }
+
+      const url = `https://wttr.in/${lat},${lon}?format=%t+%C+%h`;
+      fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`)
+        .then(response => response.json())
+        .then(data => {
+          if (!data.contents) {
+            weatherInfo.innerHTML = "Weather unavailable.";
+            return;
+          }
+          weatherInfo.innerHTML = data.contents.replace(/\+/g,'') || "Weather unavailable.";
+          lastWeatherUpdateCoords = {lat, lon};
+          lastWeatherUpdateTime = now;
+        })
+        .catch(() => { weatherInfo.innerHTML = "Weather unavailable."; });
+    }
+
+    // --- GPS Tracking ---
+    document.getElementById('startBtn').onclick = function() {
+      if (navigator.geolocation) {
+        document.getElementById('startBtn').disabled = true;
+        document.getElementById('stopBtn').disabled = false;
+        totalDistance = 0;
+        document.getElementById('distance').textContent = 'GPS Distance: 0.00 ft';
+        currentSpeed = 0;
+        document.getElementById('speed').textContent = '0.0 mph';
+        lastLatLng = null;
+        trailCoordinates = [];
+        elevProfile = [];
+        waypoints = [];
+        gpsBuffer = [];
+        startTime = Date.now();
+        trackingDuration = 0;
+        if (trailLine) { map.removeLayer(trailLine); trailLine = null; }
+        if (marker) { map.removeLayer(marker); marker = null; }
+        map.eachLayer(function(layer){ // Remove all previous waypoint markers
+            if(layer instanceof L.Marker && layer._icon && layer._icon.src && layer._icon.src.includes('684908.png')) map.removeLayer(layer);
+        });
+
+        watchId = navigator.geolocation.watchPosition(updateLocation, handleError, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        });
+      }
+    };
+    document.getElementById('stopBtn').onclick = function() {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+        document.getElementById('startBtn').disabled = false;
+        document.getElementById('stopBtn').disabled = true;
+        alert('Tracking stopped.');
+      }
+    };
+    document.getElementById('resetBtn').onclick = function() {
+      if (trailLine) { map.removeLayer(trailLine); trailLine = null; }
+      if (marker) { map.removeLayer(marker); marker = null; }
+      totalDistance = 0;
+      currentSpeed = 0;
+      startTime = null;
+      trackingDuration = 0;
+      lastLatLng = null;
+      trailCoordinates = [];
+      elevProfile = [];
+      waypoints = [];
+      gpsBuffer = [];
+      document.getElementById('distance').textContent = 'GPS Distance: 0.00 ft';
+      document.getElementById('speed').textContent = '0.0 mph';
+      document.getElementById('duration').textContent = '00:00:00';
+      document.getElementById('coords').textContent = '📍 Coordinates: N/A';
+      document.getElementById('accuracy').textContent = 'Accuracy: --';
+      accelTrail = [ {...CANVAS_CENTER} ];
+      accelDistance = 0;
+      prevAccelPoint = {...CANVAS_CENTER};
+      drawAccelTrail();
+      updateAccelDistanceDisplay();
+      drawElevationProfile();
+      map.eachLayer(function(layer){ // Remove all markers
+        if(layer instanceof L.Marker) map.removeLayer(layer);
+      });
+      weatherInfo.innerHTML = "Loading advanced weather data...";
+    };
+
+    function updateLocation(position) {
+      document.getElementById('accuracy').textContent =
+        position.coords.accuracy ? position.coords.accuracy.toFixed(1) + ' m' : '--';
+
+      // --- IMPORTANT CHANGE ---
+      // The condition below now uses the updated ACCURACY_THRESHOLD (50m).
+      // This will allow more GPS points to be recorded, improving the tracking density.
+      if (position.coords.accuracy > ACCURACY_THRESHOLD) return;
+      // Removed the 'if (!allowGPS) return;' condition.
+      // GPS updates will now be processed independently of accelerometer movement.
+
+      let lat = position.coords.latitude, lng = position.coords.longitude, elev = null;
+      if (position.coords.altitude !== null) elev = position.coords.altitude;
+
+      // Calculate speed
+      if (position.coords.speed !== null) {
+        currentSpeed = position.coords.speed * 2.23694; // meters/s to mph
+        document.getElementById('speed').textContent = currentSpeed.toFixed(1) + ' mph';
+      }
+
+      const now = Date.now();
+      const timeDiff = (now - lastGPSTime) / 1000; // seconds
+      lastGPSTime = now;
+
+      [lat, lng] = smoothGPS(lat, lng);
+      const latLng = [lat, lng];
+
+      document.getElementById('coords').textContent = `📍 Coordinates: Latitude: ${lat.toFixed(6)}, Longitude: ${lng.toFixed(6)}`;
+      fetchWeatherByCoords(lat, lng); // Update weather
+
+      if (lastLatLng) {
+        const distance = getDistanceFromLatLng(lastLatLng, latLng);
+        if (distance < MIN_DISTANCE || distance > MAX_DISTANCE) return; // Filter out small movements or jumps
+        totalDistance += distance * 3.28084; // meters to feet
+        document.getElementById('distance').textContent = 'GPS Distance: ' + totalDistance.toFixed(2) + ' ft';
+      }
+
+      trailCoordinates.push(latLng);
+      if (trailLine) trailLine.setLatLngs(trailCoordinates);
+      else trailLine = L.polyline(trailCoordinates, { color: '#00ffe7', weight: 4, opacity: 0.7 }).addTo(map);
+
+      if (marker) marker.setLatLng(latLng);
+      else marker = L.marker(latLng).addTo(map);
+      map.setView(latLng, 15);
+      lastLatLng = latLng;
+
+      if (!baroAvailable && elev !== null) {
+        elevProfile.push(elev);
+        drawElevationProfile();
+      }
+    }
+
+    function getDistanceFromLatLng(l1, l2) {
+      const R = 6371000, toRad = v => (v * Math.PI) / 180;
+      const lat1 = l1[0], lon1 = l1[1], lat2 = l2[0], lon2 = l2[1];
+      const dLat = toRad(lat2 - lat1), dLon = toRad(l2[1] - l1[1]);
+      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+    function handleError(error) {
+      switch(error.code) {
+        case error.PERMISSION_DENIED: alert('Location permission denied. Please allow access for tracking.'); break;
+        case error.POSITION_UNAVAILABLE: alert('Location unavailable. Check your device settings.'); break;
+        case error.TIMEOUT: alert('Location request timed out. Trying again...'); break;
+        default: alert('Unknown geolocation error: ' + error.message);
+      }
+    }
+
+    // --- GPX Export ---
+    document.getElementById('exportBtn').onclick = function() {
+      if (!trailCoordinates.length) return alert("No track to export.");
+      let gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Alien Tech GPX Tracker v4.0" xmlns="http://www.topografix.com/GPX/1/1">
+<trk><name>Alien Track</name><trkseg>
+${trailCoordinates.map(([lat,lng])=>`<trkpt lat="${lat}" lon="${lng}"></trkpt>`).join('\n')}
+</trkseg></trk>
+${waypoints.map(wpt=>`<wpt lat="${wpt.lat}" lon="${wpt.lng}"><name>${wpt.name||'Waypoint'}</name></wpt>`).join('\n')}
+</gpx>`;
+      let blob = new Blob([gpx], {type:'application/gpx+xml'});
+      let url = URL.createObjectURL(blob);
+      let a = document.createElement('a');
+      a.href = url; a.download = 'alien_track_v4.gpx'; a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    // --- Add Waypoint ---
+    document.getElementById('addWptBtn').onclick = function() {
+      if (!lastLatLng) return alert("No GPS fix yet to add a waypoint.");
+      let name = prompt("Enter waypoint name:", "Waypoint " + (waypoints.length+1));
+      waypoints.push({lat: lastLatLng[0], lng: lastLatLng[1], name: name});
+      let customIcon = L.icon({
+          iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png', // Default waypoint icon
+          iconSize: [32, 32], // size of the icon
+          iconAnchor: [16, 32], // point of the icon which will correspond to marker's location
+          popupAnchor: [0, -32] // point from which the popup should open relative to the iconAnchor
+      });
+      L.marker(lastLatLng, {icon: customIcon})
+        .addTo(map).bindPopup(`<b>${name || 'Waypoint'}</b><br>Lat: ${lastLatLng[0].toFixed(4)}<br>Lon: ${lastLatLng[1].toFixed(4)}`).openPopup();
+      alert(`Waypoint \"${name}\" added!`);
+    };
+
+    // --- Open in Apple Maps ---
+    document.getElementById('openAppleMapsBtn').onclick = function() {
+      if (!lastLatLng) {
+        alert("No current GPS location to open in Apple Maps.");
+        return;
+      }
+      const lat = lastLatLng[0];
+      const lng = lastLatLng[1];
+      const appleMapsUrl = `http://maps.apple.com/?ll=${lat},${lng}`;
+      window.open(appleMapsUrl, '_blank');
+    };
+
+    // --- Map Style Switch ---
+    document.getElementById('mapStyle').onchange = function() {
+      let style = this.value;
+      Object.values(mapLayers).forEach(l=>map.removeLayer(l)); // Remove all current layers
+      mapLayers[style].addTo(map); // Add the selected layer
+    };
+
+    // --- Map Init ---
+    function initMap() {
+      map = L.map('map').setView([0, 0], 2); // Initial view, will be updated by GPS
+      mapLayers['CartoDB.Positron'].addTo(map); // Default to CartoDB Positron (Apple-like)
+    }
+
+    // Initialize all components on window load
+    window.onload = function() {
+      initMap();
+      drawCompass(); // Draw initial compass
+      drawAccelTrail(); // Draw initial accel trail
+      updateAccelDistanceDisplay();
+      updateAccelDataDisplay();
+      drawElevationProfile(); // Draw initial empty elevation profile
+      setupBarometer(); // Attempt to set up barometer
+      requestAnimationFrame(updatePerformance); // Start performance monitor
+    };
+  </script>
+</body>
+</html>
