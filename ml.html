@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classic Movie Archives</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the Inter font and overall body */
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        /* Styling for the main container */
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.08); /* Slightly transparent background */
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px); /* Frosted glass effect */
+        }
+        /* Header specific styles */
+        h1 {
+            background: linear-gradient(45deg, #ff6b6b, #ffd93d, #6bcf7f, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: transparent; /* Fallback for browsers not supporting text-fill-color */
+            animation: gradientShift 8s ease infinite;
+            background-size: 400% 400%;
+        }
+        /* Keyframe animation for gradient shift */
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        /* Link card styling */
+        .link-card {
+            background-color: rgba(40, 44, 52, 0.8); /* Darker background for each link card */
+            border-radius: 12px;
+            padding: 20px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        /* Hover effect for link cards */
+        .link-card:hover {
+            transform: translateY(-5px) scale(1.01);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        /* Link text styling */
+        .link-card a {
+            color: #61dafb; /* Accent color for links */
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        /* Hover effect for link text */
+        .link-card a:hover {
+            color: #4ecdc4; /* Another accent color on hover */
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body class="p-5">
+    <div class="container mx-auto mt-8 p-6 rounded-2xl shadow-lg">
+        <h1 class="text-5xl font-extrabold text-center mb-10 pb-4 border-b-2 border-gray-700">
+            Classic Movie Archives
+        </h1>
+
+        <div class="space-y-6">
+            <!-- Movie Links -->
+            <div class="link-card">
+                <h2 class="text-2xl font-semibold mb-2 text-white">Beetlejuice (1988)</h2>
+                <p class="text-gray-300 mb-3">A classic Tim Burton supernatural comedy.</p>
+                <a href="https://archive.org/details/beetlejuice.-1988.720p.-blu-ray.-999-mb.-hq.x-265.10bit-galaxy-rg" target="_blank" rel="noopener" class="block text-lg font-medium">
+                    View on Archive.org
+                </a>
+            </div>
+
+            <div class="link-card">
+                <h2 class="text-2xl font-semibold mb-2 text-white">Edward Scissorhands (1990)</h2>
+                <p class="text-gray-300 mb-3">A poignant romantic fantasy from Tim Burton.</p>
+                <a href="https://archive.org/details/edward-scissorhands-dvd-2005" target="_blank" rel="noopener" class="block text-lg font-medium">
+                    View on Archive.org
+                </a>
+            </div>
+
+            <div class="link-card">
+                <h2 class="text-2xl font-semibold mb-2 text-white">Teenage Mutant Ninja Turtles (1990)</h2>
+                <p class="text-gray-300 mb-3">The original live-action adventure of the heroes in a half shell.</p>
+                <a href="https://archive.org/details/teenage-mutant-ninja-turtles-open-matte" target="_blank" rel="noopener" class="block text-lg font-medium">
+                    View on Archive.org
+                </a>
+            </div>
+
+            <div class="link-card">
+                <h2 class="text-2xl font-semibold mb-2 text-white">Teenage Mutant Ninja Turtles II: The Secret of the Ooze (1991)</h2>
+                <p class="text-gray-300 mb-3">The turtles return for more action and adventure.</p>
+                <a href="https://archive.org/details/teenage-mutant-ninja-turtles-ii-3-a-the-secret-of-the-ooze-5-b-1991-5-d-full-movie" target="_blank" rel="noopener" class="block text-lg font-medium">
+                    View on Archive.org
+                </a>
+            </div>
+
+            <div class="link-card">
+                <h2 class="text-2xl font-semibold mb-2 text-white">The NeverEnding Story (1984)</h2>
+                <p class="text-gray-300 mb-3">A magical journey into the world of Fantasia.</p>
+                <a href="https://archive.org/details/the-neverending-story_202406" target="_blank" rel="noopener" class="block text-lg font-medium">
+                    View on Archive.org
+                </a>
+            </div>
+
+            <div class="link-card">
+                <h2 class="text-2xl font-semibold mb-2 text-white">Mortal Kombat (1995)</h2>
+                <p class="text-gray-300 mb-3">The iconic fighting game brought to the big screen.</p>
+                <a href="https://archive.org/details/mortal-kombat-1995_202310" target="_blank" rel="noopener" class="block text-lg font-medium">
+                    View on Archive.org
+                </a>
+            </div>
+
+            <div class="link-card">
+                <h2 class="text-2xl font-semibold mb-2 text-white">Kickboxer (1989)</h2>
+                <p class="text-gray-300 mb-3">Jean-Claude Van Damme in a martial arts classic.</p>
+                <a href="https://archive.org/details/kickboxer.-1989.1080p.-br-rip.x-264.-yify_202406" target="_blank" rel="noopener" class="block text-lg font-medium">
+                    View on Archive.org
+                </a>
+            </div>
+
+            <div class="link-card">
+                <h2 class="text-2xl font-semibold mb-2 text-white">Star Wars: Return of the Jedi (1983)</h2>
+                <p class="text-gray-300 mb-3">The thrilling conclusion to the original Star Wars trilogy.</p>
+                <a href="https://archive.org/details/star-wars-1977-despecialized-720p.x-264.-ac-3.5.1/Return+Of+The+Jedi+(1983)+%7BDespecialized%7D+(720p.x264.AC3.5.1).mp4" target="_blank" rel="noopener" class="block text-lg font-medium">
+                    View on Archive.org
+                </a>
+            </div>
+
+            <div class="link-card">
+                <h2 class="text-2xl font-semibold mb-2 text-white">Ghostbusters (1984)</h2>
+                <p class="text-gray-300 mb-3">Who ya gonna call? The original paranormal comedy.</p>
+                <a href="https://archive.org/details/ghostbusters-from-the-original-vhs-release-in-1985" target="_blank" rel="noopener" class="block text-lg font-medium">
+                    View on Archive.org
+                </a>
+            </div>
+
+            <div class="link-card">
+                <h2 class="text-2xl font-semibold mb-2 text-white">The Hobbit: An Unexpected Journey (2012)</h2>
+                <p class="text-gray-300 mb-3">The first part of Bilbo Baggins' epic adventure.</p>
+                <a href="https://archive.org/details/teeka3/The.Hobbit.An.Unexpected.Journey.2012.480p.BRRip.mkv" target="_blank" rel="noopener" class="block text-lg font-medium">
+                    View on Archive.org
+                </a>
+            </div>
+
+            <div class="link-card">
+                <h2 class="text-2xl font-semibold mb-2 text-white">A Bug's Life (1998)</h2>
+                <p class="text-gray-300 mb-3">Pixar's animated adventure in the world of insects.</p>
+                <a href="https://archive.org/details/a-bugs-life-1998-uk-vhs" target="_blank" rel="noopener" class="block text-lg font-medium">
+                    View on Archive.org
+                </a>
+            </div>
+
+            <div class="link-card">
+                <h2 class="text-2xl font-semibold mb-2 text-white">The Lion King (1994)</h2>
+                <p class="text-gray-300 mb-3">Disney's timeless animated musical epic.</p>
+                <a href="https://archive.org/details/walt-disney-classic-the-lion-king" target="_blank" rel="noopener" class="block text-lg font-medium">
+                    View on Archive.org
+                </a>
+            </div>
+
+            <div class="link-card">
+                <h2 class="text-2xl font-semibold mb-2 text-white">Finding Nemo (2003)</h2>
+                <p class="text-gray-300 mb-3">A heartwarming underwater adventure from Pixar.</p>
+                <a href="https://archive.org/details/finding-nemo-2003-vhs-31of-32/Finding+Nemo+(2003+VHS)+-+01of32.mp4" target="_blank" rel="noopener" class="block text-lg font-medium">
+                    View on Archive.org
+                </a>
+            </div>
+
+
+
+
+            <div class="link-card">
+                <h2 class="text-2xl font-semibold mb-2 text-white">Monsters, Inc. (2001)</h2>
+                <p class="text-gray-300 mb-3">The hilarious world of monsters and their scare factory.</p>
+                <a href="https://archive.org/details/monsters-inc-2002-vhs.ia_202401" target="_blank" rel="noopener" class="block text-lg font-medium">
+                    View on Archive.org
+                </a>
+            </div>
+
+
+
+
+
+
+  <div class="link-card">
+                <h2 class="text-2xl font-semibold mb-2 text-white">Long list, Inc. (2001)</h2>
+                <p class="text-gray-300 mb-3">The archive.</p>
+                <a href="https://archive.org/download/movies_202211" target="_blank" rel="noopener" class="block text-lg font-medium">
+                    View on Archive.org
+                </a>
+            </div>
+
+
+  <div class="link-card">
+                <h2 class="text-2xl font-semibold mb-2 text-white"> hex, Inc. (2001)</h2>
+                <p class="text-gray-300 mb-3">The hilarious world of hex and their scare factory.</p>
+                <a href="https://archive.org/details/hexziasmovies" target="_blank" rel="noopener" class="block text-lg font-medium">
+                    View on Archive.org
+                </a>
+            </div>
+
+  <div class="link-card">
+                <h2 class="text-2xl font-semibold mb-2 text-white">Blank, Inc. (2001)</h2>
+                <p class="text-gray-300 mb-3">band of brothers.</p>
+                <a href="https://archive.org/details/bandofbrotherspart12004wljtpbs19911992" target="_blank" rel="noopener" class="block text-lg font-medium">
+                    View on Archive.org
+                </a>
+            </div>
+
+
+
+
+
+
+
+
+
+
+            
+</body>
+</html>
