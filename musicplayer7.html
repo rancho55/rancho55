@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced MP3 Player with Visualizer</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+
+        .player {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 320px;
+            transition: background 0.5s ease;
+        }
+
+        .file-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f8f8;
+            border-radius: 8px;
+            border: 2px dashed #ccc;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: white;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            background: #ffffff;
+        }
+
+        .controls {
+            margin: 10px 0;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: scale(1.1);
+            color: #ff4081;
+        }
+
+        button:focus {
+            outline: none;
+        }
+
+        .track-info {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f8f8;
+            border-radius: 5px;
+        }
+
+        .progress-container {
+            margin-top: 10px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+
+        .color-control {
+            margin-top: 10px;
+        }
+
+        .color-control input {
+            margin: 0 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="player" id="player">
+        <h1>My Advanced MP3 Player</h1>
+        
+        <div class="file-section">
+            <p>Select your music files:</p>
+            <input type="file" id="musicFiles" multiple />
+        </div>
+
+        <audio id="audio" controls>
+            Your browser does not support the audio tag.
+        </audio>
+        
+        <!-- Visualizer Canvas -->
+        <canvas id="visualizer"></canvas>
+
+        <!-- Control buttons -->
+        <div class="controls">
+            <button id="prev" aria-label="Previous Track">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 20l-8-8 8-8v16z" />
+                    <path d="M20 20l-8-8 8-8v16z" />
+                </svg>
+            </button>
+            <button id="play" aria-label="Play Track">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 3v18l15-9-15-9z" />
+                </svg>
+            </button>
+            <button id="pause" aria-label="Pause Track">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                </svg>
+            </button>
+            <button id="next" aria-label="Next Track">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 4v16l8-8-8-8z" />
+                    <path d="M20 4v16l8-8-8-8z" />
+                </svg>
+            </button>
+            <button id="shuffle" aria-label="Shuffle">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 4h4l3-3h12m0 20h-4l-3 3H1m16-4h4v4h-4zm-4-4v4l-3-3m0 0H7l-3 3H1M12 4l3 3H4v4h14" />
+                </svg>
+            </button>
+            <button id="repeat" aria-label="Repeat">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17.38 6.38A9 9 0 1 1 12 21v-3m5.38-2.62L21 15l-5.62-.62V9" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Track info -->
+        <div class="track-info">
+            <p id="trackTitle">No song loaded</p>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-container">
+            <input type="range" id="progress" value="0" step="1">
+        </div>
+
+        <!-- Color Control -->
+        <div class="color-control">
+            <input type="color" id="color1" value="#ff0000">
+            <input type="color" id="color2" value="#00ff00">
+            <button id="changeGradient">Apply Gradient</button>
+            <button id="randomColors">Random Colors</button>
+        </div>
+    </div>
+
+    <script>
+        const audio = document.getElementById("audio");
+        const playButton = document.getElementById("play");
+        const pauseButton = document.getElementById("pause");
+        const nextButton = document.getElementById("next");
+        const prevButton = document.getElementById("prev");
+        const trackTitle = document.getElementById("trackTitle");
+        const progressControl = document.getElementById("progress");
+        const visualizerCanvas = document.getElementById("visualizer");
+        const visualizerContext = visualizerCanvas.getContext("2d");
+        const player = document.getElementById("player");
+        const changeGradientButton = document.getElementById("changeGradient");
+        const color1Input = document.getElementById("color1");
+        const color2Input = document.getElementById("color2");
+        const randomColorsButton = document.getElementById("randomColors");
+        const shuffleButton = document.getElementById("shuffle");
+        const repeatButton = document.getElementById("repeat");
+
+        let tracks = [];
+        let currentTrackIndex = 0;
+        let isShuffling = false;
+        let isRepeating = false;
+        let audioContext;
+        let analyser;
+        let dataArray;
+
+        // File input handling
+        document.getElementById('musicFiles').addEventListener('change', function(e) {
+            tracks = Array.from(e.target.files).map((file, index) => ({
+                title: file.name.replace(/\.[^/.]+$/, ""), // Remove extension
+                file: file,
+                url: URL.createObjectURL(file)
+            }));
+            
+            if (tracks.length > 0) {
+                currentTrackIndex = 0;
+                loadTrack(currentTrackIndex);
+            }
+        });
+
+        // Initialize the audio context and analyser
+        function initAudioVisualizer() {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 2048;
+            const source = audioContext.createMediaElementSource(audio);
+            source.connect(analyser);
+            analyser.connect(audioContext.destination);
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+        }
+
+        // Load the track using file URL
+        function loadTrack(index) {
+            if (!tracks[index]) return;
+            
+            audio.src = tracks[index].url;
+            trackTitle.textContent = "Track Title: " + tracks[index].title;
+            audio.load();
+        }
+
+        // Update the progress bar and visualizer
+        audio.addEventListener("timeupdate", () => {
+            const progress = (audio.currentTime / audio.duration) * 100 || 0;
+            progressControl.value = progress;
+
+            if (audioContext && analyser) {
+                analyser.getByteFrequencyData(dataArray);
+                drawVisualizer();
+            }
+        });
+
+        function drawVisualizer() {
+            visualizerContext.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            visualizerContext.fillRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
+
+            const barWidth = (visualizerCanvas.width / dataArray.length) * 2;
+            let barHeight;
+            let x = 0;
+
+            for (let i = 0; i < dataArray.length; i++) {
+                barHeight = dataArray[i] / 2;
+                const red = (barHeight + 100);
+                visualizerContext.fillStyle = `rgb(${red},50,50)`;
+                visualizerContext.fillRect(x, visualizerCanvas.height - barHeight, barWidth, barHeight);
+                x += barWidth + 1;
+            }
+        }
+
+        // Seek to a new position in audio
+        progressControl.addEventListener("input", () => {
+            audio.currentTime = (progressControl.value / 100) * audio.duration;
+        });
+
+        // Play track
+        playButton.addEventListener("click", () => {
+            if (tracks.length === 0) return;
+            audio.play();
+            if (!audioContext) {
+                initAudioVisualizer();
+            }
+            audioContext.resume();
+        });
+
+        // Pause track
+        pauseButton.addEventListener("click", () => audio.pause());
+
+        // Next track
+        nextButton.addEventListener("click", () => {
+            if (tracks.length === 0) return;
+            currentTrackIndex = (currentTrackIndex + 1) % tracks.length;
+            loadTrack(currentTrackIndex);
+            audio.play();
+        });
+
+        // Previous track
+        prevButton.addEventListener("click", () => {
+            if (tracks.length === 0) return;
+            currentTrackIndex = (currentTrackIndex - 1 + tracks.length) % tracks.length;
+            loadTrack(currentTrackIndex);
+            audio.play();
+        });
+
+        // Shuffle and repeat functionality
+        shuffleButton.addEventListener("click", () => {
+            isShuffling = !isShuffling;
+            shuffleButton.classList.toggle('active', isShuffling);
+        });
+
+        repeatButton.addEventListener("click", () => {
+            isRepeating = !isRepeating;
+            repeatButton.classList.toggle('active', isRepeating);
+        });
+
+        // Event when audio ends
+        audio.addEventListener("ended", () => {
+            if (isRepeating) {
+                audio.currentTime = 0;
+                audio.play();
+            } else {
+                currentTrackIndex = isShuffling ? Math.floor(Math.random() * tracks.length) : (currentTrackIndex + 1) % tracks.length;
+                loadTrack(currentTrackIndex);
+                audio.play();
+            }
+        });
+
+        // Change Gradient Functionality
+        changeGradientButton.addEventListener("click", () => {
+            const color1 = color1Input.value;
+            const color2 = color2Input.value;
+            player.style.background = `linear-gradient(45deg, ${color1}, ${color2})`;
+        });
+
+        // Random Colors Functionality
+        function getRandomColor() {
+            const randomColor = Math.floor(Math.random() * 16777215).toString(16);
+            return `#${randomColor.padStart(6, '0')}`;
+        }
+
+        randomColorsButton.addEventListener("click", () => {
+            const randomColor1 = getRandomColor();
+            const randomColor2 = getRandomColor();
+            player.style.background = `linear-gradient(45deg, ${randomColor1}, ${randomColor2})`;
+            color1Input.value = randomColor1;
+            color2Input.value = randomColor2;
+        });
+    </script>
+</body>
+</html>
