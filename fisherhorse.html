@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Thundercloud RPG - v4.1 Merchant Expansion</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Quicksand:wght@300;500&display=swap');
+  :root { --gold: #c5a059; --bg: #0b0b13; --panel: #161625; --border: #2a2a3d; --red: #e63946; --blue: #457b9d; --green: #2a9d8f; --purple: #7b2cbf; --xp: #ffca3a; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { background-color: var(--bg); color: #e0e0e0; font-family: 'Quicksand', sans-serif; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+  #game-container { width: 100%; max-width: 450px; position: relative; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); position: relative; }
+  .panel-title { font-family: 'Cinzel', serif; font-size: 0.8rem; color: var(--gold); border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 8px; }
+  .stat-label { display: flex; justify-content: space-between; font-size: 0.65rem; color: #aaa; }
+  .bar-bg { width: 100%; height: 8px; background: #000; border-radius: 4px; overflow: hidden; margin: 4px 0; border: 1px solid #222; }
+  .bar-fill { height: 100%; width: 0%; transition: width 0.4s; }
+  #map-grid { display: grid; gap: 1px; background: #222; border: 2px solid var(--gold); border-radius: 4px; overflow: hidden; }
+  .cell { aspect-ratio: 1/1; background: #0a0a0f; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; }
+  .cell.wall { background: #000; }
+  .cell.portal { background: rgba(123, 44, 191, 0.1); box-shadow: inset 0 0 10px var(--purple); }
+  .btn { padding: 12px; background: #1a1a2e; border: 1px solid var(--border); color: var(--gold); font-family: 'Cinzel'; border-radius: 6px; cursor: pointer; font-size: 0.75rem; width: 100%; margin: 4px 0; }
+  .btn:active { background: var(--gold); color: #000; transform: scale(0.98); }
+  .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5,5,10,0.98); display: none; flex-direction: column; padding: 20px; z-index: 1000; justify-content: center; }
+  .screen { display: none; width: 100%; }
+  .active { display: block; }
+  #game-log, #combat-log { height: 85px; overflow-y: auto; font-size: 0.65rem; color: #888; border-top: 1px solid #333; padding-top: 8px; }
+  .log-entry { margin-bottom: 4px; border-left: 2px solid var(--gold); padding-left: 6px; }
+  .dismount-btn { position: absolute; top: 12px; right: 12px; background: var(--red); color: #fff; border: none; border-radius: 4px; font-size: 0.55rem; padding: 4px 8px; cursor: pointer; font-family: 'Cinzel'; display: none; }
+</style>
+</head>
+<body>
+
+<div id="game-container">
+  <div id="start-screen" class="screen active">
+    <div style="text-align:center; margin-bottom:20px;"><h1 style="font-family:'Cinzel'; color:var(--gold); margin:0; letter-spacing:3px;">THUNDERCLOUD</h1></div>
+    <div class="panel">
+      <div class="panel-title">CHARACTER INIT <button onclick="rollStats()" style="float:right; background:none; border:1px solid var(--gold); color:var(--gold); font-size:0.5rem; padding:2px; cursor:pointer;">ROLL STATS</button></div>
+      <div class="stat-row"><div class="stat-label">STR <span id="v-str">-</span></div><div class="bar-bg"><div id="b-str" class="bar-fill" style="background:var(--red)"></div></div></div>
+      <div class="stat-row"><div class="stat-label">DEF <span id="v-def">-</span></div><div class="bar-bg"><div id="b-def" class="bar-fill" style="background:var(--blue)"></div></div></div>
+      <div class="stat-row"><div class="stat-label">HP <span id="v-hp">-</span></div><div class="bar-bg"><div id="b-hp" class="bar-fill" style="background:var(--green)"></div></div></div>
+    </div>
+    <button id="begin-btn" class="btn" style="opacity:0.2" onclick="beginQuest()">ENTER THE WASTES</button>
+  </div>
+
+  <div id="game-ui" class="screen">
+    <div class="panel">
+      <button id="dismount-ui-btn" class="dismount-btn" onclick="dismountMount()">DISMOUNT ❌</button>
+      <div class="stat-label"><span id="lvl-tag">LVL 1</span> <span id="hp-main-txt"></span></div>
+      <div class="bar-bg" style="height:6px;"><div id="p-hp-main" class="bar-fill" style="background:var(--green)"></div></div>
+      <div class="stat-label" style="margin-top:4px;">EXP <span id="xp-txt">0/100</span></div>
+      <div class="bar-bg" style="height:4px;"><div id="p-xp-main" class="bar-fill" style="background:var(--xp)"></div></div>
+      <div style="display:flex; justify-content:space-between; font-size:0.55rem; margin-top:8px; color:var(--gold);">
+        <span id="p-wpn-tag">W: Dagger</span> <span id="p-arm-tag">A: Rags</span> <span id="p-gold-tag">G: 20</span>
+      </div>
+      <button class="btn" style="padding:6px; margin:5px 0 0 0;" onclick="toggleBag()">🎒 INVENTORY & QUESTS</button>
+    </div>
+    <div id="map-grid"></div>
+    <div id="game-log"></div>
+  </div>
+
+  <div id="merchant-overlay" class="overlay">
+    <h2 style="font-family:'Cinzel'; text-align:center; color:var(--gold);">MERCHANT DAVE</h2>
+    <div class="panel">
+      <div class="panel-title">QUESTS</div>
+      <div id="quest-status" style="font-size:0.6rem; color:#aaa; margin-bottom:10px;">Dave needs 5 Arundo Reeds.</div>
+      <button id="quest-btn" class="btn" onclick="turnInQuest()">TURN IN REEDS</button>
+      <div class="panel-title" style="margin-top:10px;">BUY GOODS</div>
+      <button class="btn" onclick="buyItem('Sandwich', 10, 'food')">BUY SANDWICH (10G)</button>
+      <button class="btn" onclick="buyItem('Leather Armor', 40, 'armor')">BUY LEATHER ARMOR (40G)</button>
+      <button class="btn" style="border-color:var(--gold);" onclick="buyItem('Horse Whistle', 50, 'mount')">BUY HORSE WHISTLE (50G)</button>
+      <div class="panel-title" style="margin-top:10px;">SERVICES</div>
+      <button class="btn" style="background:#2a2a3d;" onclick="toggleBag(false, true)">💰 SELL LUGGAGE</button>
+      <button class="btn" style="border-color:#555;" onclick="closeMerchant()">LEAVE</button>
+    </div>
+  </div>
+
+  <div id="fisher-overlay" class="overlay">
+    <h2 style="font-family:'Cinzel'; text-align:center; color:#457b9d;">FISHER</h2>
+    <div class="panel">
+      <p style="font-size: 0.65rem; color: #888; text-align: center;">"The waters are deep, stranger."</p>
+      <div class="panel-title">SPECIALTY GEAR</div>
+      <button class="btn" onclick="buyItem('Old Rod', 25, 'weapon', 4, 1)">BUY OLD ROD (25G)</button>
+      <button class="btn" onclick="buyItem('Water Skin', 15, 'food', 0, 0, 20)">BUY WATER SKIN (15G)</button>
+      <div class="panel-title" style="margin-top:10px;">SERVICES</div>
+      <button class="btn" style="background:#2a2a3d;" onclick="toggleBag(false, true)">💰 SELL FISH/ITEMS</button>
+      <button class="btn" style="border-color:#555;" onclick="closeFisher()">LEAVE</button>
+    </div>
+  </div>
+
+  <div id="lvl-overlay" class="overlay">
+    <h2 style="font-family:'Cinzel'; text-align:center; color:var(--xp);">LEVEL UP!</h2>
+    <p style="text-align:center; font-size:0.8rem;">Select an Attribute to increase by +2</p>
+    <button class="btn" onclick="applyLvl('str')">INCREASE STRENGTH</button>
+    <button class="btn" onclick="applyLvl('def')">INCREASE DEFENSE</button>
+  </div>
+
+  <div id="battle-overlay" class="overlay">
+    <h2 id="e-name" style="font-family:'Cinzel'; text-align:center; color:var(--red); margin:0;"></h2>
+    <div class="panel">
+      <div class="stat-label">PLAYER <span id="b-p-val"></span></div>
+      <div class="bar-bg"><div id="b-p-fill" class="bar-fill" style="background:var(--green)"></div></div>
+      <div class="stat-label">ENEMY <span id="b-e-val"></span></div>
+      <div class="bar-bg"><div id="b-e-fill" class="bar-fill" style="background:var(--red)"></div></div>
+    </div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+      <button class="btn" onclick="battleAction('attack')">⚔️ ATTACK</button>
+      <button class="btn" onclick="battleAction('power')">💥 POWER HIT (-5HP)</button>
+      <button class="btn" onclick="toggleBag(true)">🎒 ITEMS</button>
+      <button class="btn" onclick="battleAction('flee')">🏃 FLEE</button>
+    </div>
+    <div id="combat-log"></div>
+  </div>
+
+  <div id="bag-overlay" class="overlay">
+    <h2 id="bag-title" style="font-family:'Cinzel'; text-align:center; color:var(--gold);">PACK</h2>
+    <div id="bag-list"></div>
+    <button class="btn" onclick="closeBag()">CLOSE</button>
+  </div>
+</div>
+
+<script>
+const MONSTERS = {
+  mosq: { name: "Black Mosquito", hp: 12, maxHp: 12, str: 5, def: 2, xp: 20, gold: 3, lootTable: [{name:"Soggy Wing", value: 3, icon:"🪽", type:"junk"}] },
+  slime: { name: "Blue Slime", hp: 45, maxHp: 45, str: 7, def: 3, xp: 35, gold: 5, lootTable: [{name:"Slime Core", heal:15, value: 10, icon:"🔮", type:"food"}] },
+  torquen: { name: "Blue torque", hp: 145, maxHp: 145, str: 7, def: 3, xp: 35, gold: 5, lootTable: [{name:"Soggy wrench", heal:15, value: 10, icon:"🪽", type:"food"}] },
+  dweables: { name: "tiny dweables", hp: 4, maxHp: 4, str: 7, def: 3, xp: 35, gold: 115, lootTable: [{name:"gold socks", heal:15, value: 10, icon:"🥇", type:"food"}] },
+  bugmug: { name: "dark beetle", hp: 12, maxHp: 12, str: 5, def: 2, xp: 20, gold: 3, lootTable: [{name:"antenna", value: 3, icon:"🪽", type:"junk"}] },
+  flame: { name: "red ball", hp: 45, maxHp: 45, str: 7, def: 3, xp: 35, gold: 5, lootTable: [{name:"ash", heal:15, value: 10, icon:"🔮", type:"food"}] },
+  "red eagle": { name: "drack ", hp: 112, maxHp: 112, str: 15, def: 2, xp: 220, gold: 113, lootTable: [{name:"High Wing", value: 3, icon:"🪽", type:"junk"}] },
+  termi: { name: "colonial robot", hp: 445, maxHp: 445, str: 17, def: 13, xp: 535, gold: 555, lootTable: [{name:"Atom Core", heal:215, value: 10, icon:"🔮", type:"food"}] },
+  alpha_ant: { name: "Alpha Ant", hp: 60, maxHp: 60, str: 13, def: 10, xp: 60, gold: 35, customDrop: { type: "weapon", name: "Ant Pincer", dice: 8, bonus: 2, value: 25, icon: "✂️", chance: 0.99 }, lootTable: [{ name: "Ant Mandible", value: 5, icon: "🦷", type:"junk" }] },
+  guardian: { name: "Arundo Guardian", hp: 180, maxHp: 180, str: 26, def: 20, xp: 200, gold: 150, lootTable: [{ name: "Giant Reed", value: 15, icon: "🎋", type:"junk" }] }
+};
+
+const WORLD = {
+  "Map1": { name: "SHADOW PLAINS", grid: [[1,1,1,1,1,1,1,1,1,1],[1,0,12,9,13,0,0,10,0,1],[1,0,12,9,13,0,0,10,0,1],[1,0,1,1,6,5,0,1,0,1],[1,0,0,14,0,0,14,0,3,1],[1,0,0,14,0,0,14,0,3,1],[1,0,0,14,0,0,14,0,3,1],[1,0,0,14,0,0,14,25,3,1],[1,0,0,14,0,0,14,0,26,1],[1,0,0,14,0,0,14,0,27,1],[1,0,0,14,0,0,14,0,28,1],[1,1,1,1,1,1,1,1,1,1]], portals: { 3: "Map2" }, spawn: {x:1, y:1} },
+  "Map2": { name: "REED GROVE", grid: [[1,1,1,1,1,1,1,1,1,1],[1,14,14,12,0,12,14,12,0,1],[1,0,1,1,1,1,1,1,0,1],[1,3,0,0,0,0,0,14,9,1],[1,0,0,14,0,0,14,0,3,1],[1,0,0,14,0,0,14,0,3,1],[1,0,0,14,0,0,14,0,3,1],[1,0,0,14,0,1,14,0,3,1],[1,0,0,1,15,1,14,0,3,1],[1,0,1,1,0,1,14,0,3,1],[1,0,1,14,16,1,14,0,3,1],[1,1,1,1,1,1,1,1,1,1]], portals: { 3: "Map3" , 16: "treechest"}, spawn: {x:1, y:1} },
+  "treechest": { name: "treasure trees", grid: [[1,1,1,1,1,1,1,1,1,1],[1,14,14,12,0,12,14,12,0,1],[1,0,1,1,1,1,1,1,0,1],[1,3,0,0,0,0,0,14,9,1],[1,0,0,14,0,0,14,0,3,1],[1,0,0,14,0,0,14,0,3,1],[1,0,0,14,0,0,14,0,3,1],[1,117,0,14,0,1,14,0,3,1],[1,117,0,1,15,1,14,0,3,1],[1,0,1,1,0,1,14,14,3,1],[1,0,1,14,0,1,14,14,3,1],[1,1,1,1,1,1,1,1,1,1]], portals: { 3: "Map3" }, spawn: {x:1, y:1} },
+  "Map3": { name: "BIG GROVE", grid: [[1,1,1,1,1,1,1,1,1,1],[1,14,0,12,0,12,0,12,0,1],[1,3,1,1,1,1,1,1,0,1],[1,14,0,0,0,14,0,0,9,1],[1,1,1,1,1,1,1,1,1,1]], portals: { 3: "Map4" }, spawn: {x:1, y:1} },
+  "Map4": { name: "ANCIENT REEDS", grid: [[1,1,1,1,1,1,1,1,1,1],[1,14,0,12,0,12,0,12,0,1],[1,0,1,1,1,1,1,1,14,1],[1,0,0,0,3,0,0,0,9,1],[1,1,1,1,1,1,1,1,1,1]], portals: { 3: "Map1" }, spawn: {x:1, y:1} }
+};
+
+let p = { lvl:1, xp:0, nextXp:100, str:0, def:0, hp:0, maxHp:0, gold:20, x:1, y:1, currentMap: "Map1", weapon: {name:"Dagger", dice:4, bonus:0, icon: "🗡️"}, armor: {name:"Rags", armDef:0, icon:"🥋"}, inventory: [], reedsCollected: 0, isMounted: false };
+let activeE = null; let pTurn = true; let isSelling = false;
+
+function rollStats() {
+  p.str = Math.floor(Math.random()*16)+5; p.def = Math.floor(Math.random()*16)+5; p.maxHp = Math.floor(Math.random()*61)+55; p.hp = p.maxHp;
+  document.getElementById('v-str').innerText = p.str; document.getElementById('v-def').innerText = p.def; document.getElementById('v-hp').innerText = p.maxHp;
+  updateBar('b-str', p.str, 20); updateBar('b-def', p.def, 20); updateBar('b-hp', p.maxHp, 120);
+  document.getElementById('begin-btn').style.opacity = "1";
+}
+
+function beginQuest() { if(p.str === 0) return; document.getElementById('start-screen').classList.remove('active'); document.getElementById('game-ui').classList.add('active'); loadMap("Map1"); }
+
+function loadMap(id) { p.currentMap = id; const m = WORLD[id]; p.x = m.spawn.x; p.y = m.spawn.y; renderMap(); updateUI(); }
+
+function renderMap() {
+  const m = WORLD[p.currentMap]; const grid = document.getElementById('map-grid'); grid.innerHTML = ''; grid.style.gridTemplateColumns = `repeat(${m.grid[0].length}, 1fr)`;
+  m.grid.forEach((row, y) => { row.forEach((val, x) => {
+    const cell = document.createElement('div'); cell.className = 'cell' + (val===1?' wall':'') + (val===3?' portal':'');
+    if(x===p.x && y===p.y) cell.innerHTML = p.isMounted ? '🐎' : '⚡'; 
+    else if(val===12) cell.innerHTML = '🦟'; else if(val===13) cell.innerHTML = '🐜'; else if(val===10) cell.innerHTML = '💧'; else if(val===9) cell.innerHTML = '👹'; 
+    else if(val===14) cell.innerHTML = '🌿'; else if(val===2) cell.innerHTML = '🌫️'; 
+    else if(val===5) cell.innerHTML = '💰'; // Dave
+    else if(val===6) cell.innerHTML = '🎣'; // Fisher
+    else if(val===3) cell.innerHTML = '🌀';
+    else if(val===16) cell.innerHTML = '🧶';
+    else if(val===25) cell.innerHTML = '🤖';
+    else if(val===26) cell.innerHTML = '🔥';
+    else if(val===27) cell.innerHTML = '🐞';
+    else if(val===28) cell.innerHTML = '🦅';
+    else if(val===117) cell.innerHTML = '🐿️';
+    else if(val===15) cell.innerHTML = '🤖';
+
+    cell.onclick = () => move(x,y); grid.appendChild(cell);
+  });});
+}
+
+function move(nx, ny) {
+  const m = WORLD[p.currentMap]; if(Math.abs(nx-p.x)>1 || Math.abs(ny-p.y)>1 || m.grid[ny][nx]===1) return;
+  p.x = nx; p.y = ny; const tile = m.grid[ny][nx];
+  
+  // Mounted players move faster/carefully through reeds (ambush chance dropped from 40% to 10%)
+  let ambushChance = p.isMounted ? 0.1 : 0.4;
+  if(tile === 14 && Math.random() < ambushChance) { writeLog("An ambush in the grass!"); startBattle('mosq'); }
+  else if(tile === 2) { writeLog("The fog chills you..."); p.hp -= 2; if(p.hp <= 0) p.hp = 1; }
+  
+  if(tile===12) startBattle('mosq'); else if(tile===13) startBattle('alpha_ant'); else if(tile===10) startBattle('slime'); 
+  else if(tile===15) startBattle('torquen');
+  else if(tile===117) startBattle('dweables');
+  else if(tile===25) startBattle('termi');
+  else if(tile===26) startBattle('flame');
+  else if(tile===27) startBattle('bugmug');
+  else if(tile===28) startBattle('red eagle');
+  else if(tile===9) startBattle('guardian'); 
+  else if(tile===5) openMerchant(); 
+  else if(tile===6) openFisher();
+  else if(tile===3) loadMap(m.portals[3]);
+  else if(tile===16) loadMap(m.portals[16]);
+
+  renderMap(); updateUI();
+}
+
+// --- SHOP LOGIC ---
+function openMerchant() {
+  document.getElementById('merchant-overlay').style.display = 'flex';
+  document.getElementById('quest-status').innerText = `Progress: ${p.reedsCollected}/5 Arundo Reeds.`;
+  document.getElementById('quest-btn').disabled = (p.reedsCollected < 5);
+}
+function closeMerchant() { document.getElementById('merchant-overlay').style.display = 'none'; isSelling = false; }
+
+function openFisher() { document.getElementById('fisher-overlay').style.display = 'flex'; }
+function closeFisher() { document.getElementById('fisher-overlay').style.display = 'none'; isSelling = false; }
+
+function buyItem(n, cost, type, d=0, b=0, h=0) {
+  if(p.gold >= cost) {
+    p.gold -= cost;
+    if(type === 'armor') p.inventory.push({type:'armor', name:n, armDef:6, value: Math.floor(cost/2), icon:'🛡️'});
+    else if(type === 'weapon') p.inventory.push({type:'weapon', name:n, dice:d, bonus:b, value: Math.floor(cost/2), icon:'⚔️'});
+    else if(type === 'mount') p.inventory.push({type:'mount', name:n, value: Math.floor(cost/2), icon:'🐴'});
+    else p.inventory.push({name:n, heal:h || 30, value: Math.floor(cost/2), icon:'🥪', type: 'food'});
+    writeLog(`Bought ${n}.`); updateUI();
+  } else { writeLog("Not enough gold."); }
+}
+
+// --- BATTLE & LEVELING ---
+function startBattle(k) {
+  p.inBattle = true; activeE = {...MONSTERS[k]}; document.getElementById('battle-overlay').style.display='flex'; document.getElementById('e-name').innerText = activeE.name; document.getElementById('combat-log').innerHTML = '';
+  pTurn = true; updateUI();
+}
+function battleAction(a) {
+  if(!pTurn || !activeE) return;
+  let dmg = 0;
+  if(a === 'attack') {
+    dmg = Math.max((p.str + Math.floor(Math.random()*p.weapon.dice)+1) - activeE.def, 1);
+    logC(`You strike for ${dmg}.`);
+  } else if(a === 'power') {
+    p.hp -= 5; dmg = Math.max(((p.str + Math.floor(Math.random()*p.weapon.dice)+1) * 2) - activeE.def, 5);
+    logC(`💥 POWER HIT! You deal ${dmg} but lose 5 HP.`);
+  } else if(a === 'flee') { if(Math.random() > 0.5) { endBattle(); writeLog("You escaped."); return; } else { logC("Failed to flee!"); } }
+  activeE.hp -= dmg; if(activeE.hp <= 0) winBattle(); else { pTurn = false; enemyTurn(); }
+  updateUI();
+}
+function enemyTurn() {
+  setTimeout(() => {
+    if(!p.inBattle) return;
+    let dmg = Math.max(activeE.str - (p.def + p.armor.armDef), 1);
+    p.hp -= dmg; logC(`${activeE.name} deals ${dmg} damage.`); pTurn = true; updateUI();
+    if(p.hp <= 0) { alert("Game Over"); location.reload(); }
+  }, 600);
+}
+function winBattle() {
+  p.gold += activeE.gold; p.xp += activeE.xp;
+  writeLog(`Victory! +${activeE.xp} EXP, +${activeE.gold}G`);
+  if(activeE.name === "Arundo Guardian") p.reedsCollected++;
+  if(activeE.customDrop && Math.random() < activeE.customDrop.chance) p.inventory.push(activeE.customDrop);
+  if(activeE.lootTable && Math.random() < 0.5) p.inventory.push(activeE.lootTable[0]);
+  WORLD[p.currentMap].grid[p.y][p.x] = 0; endBattle(); checkLvl();
+}
+function endBattle() { p.inBattle = false; activeE = null; document.getElementById('battle-overlay').style.display='none'; renderMap(); updateUI(); }
+
+function checkLvl() {
+  if(p.xp >= p.nextXp) {
+    p.lvl++; p.xp -= p.nextXp; p.nextXp = Math.floor(p.nextXp * 1.5);
+    p.maxHp += 10; p.hp = p.maxHp; document.getElementById('lvl-overlay').style.display = 'flex';
+  }
+  updateUI();
+}
+function applyLvl(stat) {
+  if(stat === 'str') p.str += 2; else p.def += 2;
+  document.getElementById('lvl-overlay').style.display = 'none'; updateUI();
+}
+
+function turnInQuest() {
+  p.reedsCollected -= 5; p.inventory.push({type: "weapon", name: "Master Blade", dice: 20, bonus: 5, value: 500, icon: "⚔️"});
+  writeLog("Dave hands you the Master Blade."); openMerchant();
+}
+
+// --- MOUNT ACTIONS ---
+function dismountMount() {
+  if (p.isMounted) {
+    p.isMounted = false;
+    writeLog("You dismounted your horse.");
+    renderMap();
+    updateUI();
+  }
+}
+
+// --- INVENTORY ---
+function toggleBag(inCombat=false, sellMode=false) {
+  isSelling = sellMode; document.getElementById('bag-overlay').style.display = 'flex';
+  document.getElementById('bag-title').innerText = isSelling ? "TRADE WINDOW" : "PACK";
+  const l = document.getElementById('bag-list'); l.innerHTML = '';
+  p.inventory.forEach((it, i) => {
+    const d = document.createElement('div'); d.style.display='flex'; d.style.justifyContent='space-between'; d.style.padding='10px'; d.style.background='#000'; d.style.margin='2px';
+    let info = it.armDef ? ` (+${it.armDef} DEF)` : (it.dice ? ` (${it.dice}d+${it.bonus})` : "");
+    d.innerHTML = `<span>${it.icon || '📦'} ${it.name}${info}</span>`;
+    const btn = document.createElement('button'); btn.className='btn'; btn.style.width='85px'; btn.style.margin='0';
+    if(isSelling) {
+      btn.innerText = `SELL (${it.value}G)`;
+      btn.onclick = () => { 
+        if (it.type === 'mount' && p.isMounted) dismountMount();
+        p.gold += it.value; p.inventory.splice(i,1); toggleBag(false, true); updateUI(); 
+      };
+    } else {
+      let canEquip = (it.type === 'armor' || it.type === 'weapon' || it.armDef || it.dice);
+      btn.innerText = canEquip ? 'EQUIP' : (it.type === 'mount' ? 'MOUNT' : (it.heal ? 'USE' : 'JUNK'));
+      btn.onclick = () => {
+        if(it.heal) { p.hp = Math.min(p.maxHp, p.hp+it.heal); p.inventory.splice(i,1); }
+        else if(it.type === 'mount') { p.isMounted = true; writeLog("You mounted your horse!"); renderMap(); }
+        else if(it.type==='armor' || it.armDef) { let old = p.armor; p.armor = it; p.inventory.splice(i,1); if(old.name !== "Rags") p.inventory.push(old); }
+        else if(it.type==='weapon' || it.dice) { let old = p.weapon; p.weapon = it; p.inventory.splice(i,1); if(old.name !== "Dagger") p.inventory.push(old); }
+        closeBag(); updateUI(); if(inCombat) { pTurn=false; enemyTurn(); }
+      };
+    }
+    d.appendChild(btn); l.appendChild(d);
+  });
+}
+function closeBag() { document.getElementById('bag-overlay').style.display = 'none'; }
+
+function updateUI() {
+  document.getElementById('hp-main-txt').innerText = `${p.hp}/${p.maxHp} HP`;
+  document.getElementById('p-hp-main').style.width = (p.hp/p.maxHp*100)+"%";
+  document.getElementById('lvl-tag').innerText = `LVL ${p.lvl}`;
+  document.getElementById('xp-txt').innerText = `${p.xp}/${p.nextXp}`;
+  document.getElementById('p-xp-main').style.width = (p.xp/p.nextXp*100)+"%";
+  document.getElementById('p-wpn-tag').innerText = `W: ${p.weapon.name}`;
+  document.getElementById('p-arm-tag').innerText = `A: ${p.armor.name} (+${p.armor.armDef})`;
+  document.getElementById('p-gold-tag').innerText = `G: ${p.gold}`;
+  
+  // Toggle the visibility of the Dismount Button based on status
+  document.getElementById('dismount-ui-btn').style.display = p.isMounted ? 'block' : 'none';
+
+  if(activeE) {
+    document.getElementById('b-p-val').innerText=p.hp; document.getElementById('b-p-fill').style.width=(p.hp/p.maxHp*100)+"%";
+    document.getElementById('b-e-val').innerText=activeE.hp; document.getElementById('b-e-fill').style.width=(activeE.hp/activeE.maxHp*100)+"%";
+  }
+}
+function updateBar(id, v, m) { document.getElementById(id).style.width = (v/m*100) + "%"; }
+function writeLog(m) { const l = document.getElementById('game-log'); l.innerHTML = `<div class="log-entry">${m}</div>` + l.innerHTML; }
+function logC(m) { const l = document.getElementById('combat-log'); l.innerHTML += `<div class="log-entry">${m}</div>`; l.scrollTop = l.scrollHeight; }
+</script>
+</body>
+</html>
