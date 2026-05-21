@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Thundercloud RPG - v4.2 Persistence Hub</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Quicksand:wght@300;500&display=swap');
+  :root { --gold: #c5a059; --bg: #0b0b13; --panel: #161625; --border: #2a2a3d; --red: #e63946; --blue: #457b9d; --green: #2a9d8f; --purple: #7b2cbf; --xp: #ffca3a; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { background-color: var(--bg); color: #e0e0e0; font-family: 'Quicksand', sans-serif; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+  #game-container { width: 100%; max-width: 450px; position: relative; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); position: relative; }
+  .panel-title { font-family: 'Cinzel', serif; font-size: 0.8rem; color: var(--gold); border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 8px; }
+  .stat-label { display: flex; justify-content: space-between; font-size: 0.65rem; color: #aaa; }
+  .bar-bg { width: 100%; height: 8px; background: #000; border-radius: 4px; overflow: hidden; margin: 4px 0; border: 1px solid #222; }
+  .bar-fill { height: 100%; width: 0%; transition: width 0.4s; }
+  #map-grid { display: grid; gap: 1px; background: #222; border: 2px solid var(--gold); border-radius: 4px; overflow: hidden; }
+  .cell { aspect-ratio: 1/1; background: #0a0a0f; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; }
+  .cell.wall { background: #000; }
+  .cell.portal { background: rgba(123, 44, 191, 0.1); box-shadow: inset 0 0 10px var(--purple); }
+
+
+
+
+.cell.tree {
+  background-image: url('tree.png');
+  background-size: cover;
+  background-position: center;
+  /* Keeps the image looking like crisp pixel-art instead of getting blurry */
+  image-rendering: pixelated; 
+  image-rendering: crisp-edges;
+}
+
+.player-sprite {
+width: 100%;
+height: 100%;
+object-fit: contain;
+/* This prevents the browser from blurring your pixel art when scaling it up/down */
+image-rendering: pixelated;
+image-rendering: crisp-egdes;
+}
+
+
+  .btn { padding: 12px; background: #1a1a2e; border: 1px solid var(--border); color: var(--gold); font-family: 'Cinzel'; border-radius: 6px; cursor: pointer; font-size: 0.75rem; width: 100%; margin: 4px 0; }
+  .btn:active { background: var(--gold); color: #000; transform: scale(0.98); }
+  .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5,5,10,0.98); display: none; flex-direction: column; padding: 20px; z-index: 1000; justify-content: center; }
+  .screen { display: none; width: 100%; }
+  .active { display: block; }
+  #game-log, #combat-log { height: 85px; overflow-y: auto; font-size: 0.65rem; color: #888; border-top: 1px solid #333; padding-top: 8px; }
+  .log-entry { margin-bottom: 4px; border-left: 2px solid var(--gold); padding-left: 6px; }
+  .dismount-btn { position: absolute; top: 12px; right: 12px; background: var(--red); color: #fff; border: none; border-radius: 4px; font-size: 0.55rem; padding: 4px 8px; cursor: pointer; font-family: 'Cinzel'; display: none; }
+  
+  .scroll-shop { max-height: 180px; overflow-y: auto; margin-bottom: 10px; border: 1px solid #333; padding: 4px; border-radius: 4px; background: rgba(0,0,0,0.2); }
+  .shop-row { display: flex; justify-content: space-between; align-items: center; padding: 6px; background: #000; margin-bottom: 4px; border-radius: 4px; font-size: 0.7rem; }
+  #bag-list { max-height: 280px; overflow-y: auto; padding-right: 4px; }
+  
+  /* File Save System Layout Adjustments */
+  .save-io-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px; }
+  .io-btn { padding: 4px; font-size: 0.55rem; font-family: 'Cinzel'; background: #111; color: #aaa; border: 1px solid #333; border-radius: 4px; cursor: pointer; }
+  .io-btn:hover { border-color: var(--gold); color: #fff; }
+</style>
+</head>
+<body>
+
+<div id="game-container">
+  <div id="start-screen" class="screen active">
+    <div style="text-align:center; margin-bottom:20px;"><h1 style="font-family:'Cinzel'; color:var(--gold); margin:0; letter-spacing:3px;">THUNDERCLOUD</h1></div>
+    <div class="panel">
+      <div class="panel-title">CHARACTER INIT <button onclick="rollStats()" style="float:right; background:none; border:1px solid var(--gold); color:var(--gold); font-size:0.5rem; padding:2px; cursor:pointer;">ROLL STATS</button></div>
+      <div class="stat-row"><div class="stat-label">STR <span id="v-str">-</span></div><div class="bar-bg"><div id="b-str" class="bar-fill" style="background:var(--red)"></div></div></div>
+      <div class="stat-row"><div class="stat-label">DEF <span id="v-def">-</span></div><div class="bar-bg"><div id="b-def" class="bar-fill" style="background:var(--blue)"></div></div></div>
+      <div class="stat-row"><div class="stat-label">HP <span id="v-hp">-</span></div><div class="bar-bg"><div id="b-hp" class="bar-fill" style="background:var(--green)"></div></div></div>
+    </div>
+    
+    <div class="panel" style="padding: 8px;">
+      <div class="panel-title" style="font-size:0.6rem; border:none; margin:0; padding:0;">RESUME DIRECT FROM DISK SAVE FILE</div>
+      <input type="file" id="title-file-load" accept=".json" onchange="uploadSaveFile(event)" style="display:none;">
+      <button class="btn" style="padding:6px; font-size:0.6rem;" onclick="document.getElementById('title-file-load').click()">📁 LOAD EXTERNAL CHARACTER FILE</button>
+    </div>
+    
+    <button id="begin-btn" class="btn" style="opacity:0.2" onclick="beginQuest()">ENTER THE WASTES</button>
+  </div>
+
+  <div id="game-ui" class="screen">
+    <div class="panel">
+      <button id="dismount-ui-btn" class="dismount-btn" onclick="dismountMount()">DISMOUNT ❌</button>
+      <div class="stat-label"><span id="lvl-tag">LVL 1</span> <span id="hp-main-txt"></span></div>
+      <div class="bar-bg" style="height:6px;"><div id="p-hp-main" class="bar-fill" style="background:var(--green)"></div></div>
+      <div class="stat-label" style="margin-top:4px;">EXP <span id="xp-txt">0/100</span></div>
+      <div class="bar-bg" style="height:4px;"><div id="p-xp-main" class="bar-fill" style="background:var(--xp)"></div></div>
+      <div style="display:flex; justify-content:space-between; font-size:0.55rem; margin-top:8px; color:var(--gold);">
+        <span id="p-wpn-tag">W: Dagger</span> <span id="p-arm-tag">A: Rags</span> <span id="p-gold-tag">G: 20</span>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: 3fr 1fr; gap: 6px; margin-top: 5px;">
+        <button class="btn" style="padding:6px; margin:0;" onclick="toggleBag()">🎒 INVENTORY & QUESTS</button>
+        <button class="btn" style="background:var(--red); padding:6px; margin:0; border-color:#500; font-size:0.5rem; color:#fff;" onclick="resetGame()">☣️ RESET</button>
+      </div>
+
+      <div style="border-top: 1px solid #222; margin-top: 8px; padding-top: 6px;">
+        <div class="save-io-grid">
+          <button class="io-btn" onclick="downloadSaveFile()">💾 DOWNLOAD SAVE (.JSON)</button>
+          <input type="file" id="hud-file-load" accept=".json" onchange="uploadSaveFile(event)" style="display:none;">
+          <button class="io-btn" onclick="document.getElementById('hud-file-load').click()">📁 UPLOAD FILE LOAD</button>
+        </div>
+      </div>
+    </div>
+    <div id="map-grid"></div>
+    <div id="game-log"></div>
+  </div>
+
+  <div id="merchant-overlay" class="overlay">
+    <h2 style="font-family:'Cinzel'; text-align:center; color:var(--gold); margin: 0 0 10px 0;">MERCHANT DAVE</h2>
+    <div class="panel" style="margin-bottom: 5px; padding: 8px;">
+      <div class="panel-title" style="margin-bottom: 4px;">QUESTS</div>
+      <div id="quest-status" style="font-size:0.6rem; color:#aaa; margin-bottom:6px;">Dave needs 5 Arundo Reeds.</div>
+      <button id="quest-btn" class="btn" style="padding:6px;" onclick="turnInQuest()">TURN IN REEDS</button>
+    </div>
+    
+    <div class="panel" style="padding: 8px; margin-bottom: 5px;">
+      <div class="panel-title" style="margin-bottom: 4px;">DAVE'S ARSENAL (100 WEAPONS)</div>
+      <div id="dave-weapons-list" class="scroll-shop"></div>
+    </div>
+
+    <div class="panel" style="padding: 8px; margin-bottom: 5px;">
+      <div class="panel-title" style="margin-bottom: 4px;">GENERAL STUFF</div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+        <button class="btn" style="padding:6px; margin:0;" onclick="buyItem('Sandwich', 10, 'food')">🥪 SANDWICH (10G)</button>
+        <button class="btn" style="padding:6px; margin:0;" onclick="buyItem('Leather Armor', 40, 'armor')">🛡️ LEATHER (40G)</button>
+      </div>
+      <button class="btn" style="padding:6px; border-color:var(--gold); margin: 6px 0 0 0;" onclick="buyItem('Horse Whistle', 50, 'mount')">🐴 BUY HORSE WHISTLE (50G)</button>
+    </div>
+    
+    <button class="btn" style="background:#2a2a3d; padding:8px;" onclick="toggleBag(false, true)">💰 SELL LUGGAGE</button>
+    <button class="btn" style="border-color:#555; padding:8px;" onclick="closeMerchant()">LEAVE</button>
+  </div>
+
+  <div id="fisher-overlay" class="overlay">
+    <h2 style="font-family:'Cinzel'; text-align:center; color:#457b9d; margin: 0 0 10px 0;">FISHER MARKET</h2>
+    <div class="panel" style="padding: 8px; margin-bottom: 5px;">
+      <p style="font-size: 0.65rem; color: #888; text-align: center; margin: 2px 0;">"The waters are deep, stranger."</p>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+        <button class="btn" style="padding:6px; margin:0;" onclick="buyItem('Old Rod', 25, 'weapon', 4, 1)">🎣 OLD ROD (25G)</button>
+        <button class="btn" style="padding:6px; margin:0;" onclick="buyItem('Water Skin', 15, 'food', 0, 0, 20)">💧 WATER SKIN (15G)</button>
+      </div>
+    </div>
+    
+    <div class="panel" style="padding: 8px; margin-bottom: 5px;">
+      <div class="panel-title" style="margin-bottom: 4px;">FISHER'S NATAL DEFENSE (100 ARMORS)</div>
+      <div id="fisher-armor-list" class="scroll-shop"></div>
+    </div>
+
+    <button class="btn" style="background:#2a2a3d; padding:8px;" onclick="toggleBag(false, true)">💰 SELL FISH/ITEMS</button>
+    <button class="btn" style="border-color:#555; padding:8px;" onclick="closeFisher()">LEAVE</button>
+  </div>
+
+  <div id="lvl-overlay" class="overlay">
+    <h2 style="font-family:'Cinzel'; text-align:center; color:var(--xp);">LEVEL UP!</h2>
+    <p style="text-align:center; font-size:0.8rem;">Select an Attribute to increase by +2</p>
+    <button class="btn" onclick="applyLvl('str')">INCREASE STRENGTH</button>
+    <button class="btn" onclick="applyLvl('def')">INCREASE DEFENSE</button>
+  </div>
+
+  <div id="battle-overlay" class="overlay">
+    <h2 id="e-name" style="font-family:'Cinzel'; text-align:center; color:var(--red); margin:0;"></h2>
+    <div style="text-align: center; margin: 10px 0;">
+      <img id="e-img" src="" alt="Monster Target" style="max-height: 110px; object-fit: contain; border-radius: 4px; border: 1px solid rgba(197, 160, 89, 0.2); padding: 4px; background: rgba(0,0,0,0.3);">
+    </div>
+    <div class="panel">
+      <div class="stat-label">PLAYER <span id="b-p-val"></span></div>
+      <div class="bar-bg"><div id="b-p-fill" class="bar-fill" style="background:var(--green)"></div></div>
+      <div class="stat-label">ENEMY <span id="b-e-val"></span></div>
+      <div class="bar-bg"><div id="b-e-fill" class="bar-fill" style="background:var(--red)"></div></div>
+    </div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+      <button class="btn" onclick="battleAction('attack')">⚔️ ATTACK</button>
+      <button class="btn" onclick="battleAction('power')">💥 POWER HIT (-5HP)</button>
+      <button class="btn" onclick="toggleBag(true)">🎒 ITEMS</button>
+      <button class="btn" onclick="battleAction('flee')">🏃 FLEE</button>
+    </div>
+    <div id="combat-log"></div>
+  </div>
+
+  <div id="bag-overlay" class="overlay">
+    <h2 id="bag-title" style="font-family:'Cinzel'; text-align:center; color:var(--gold);">PACK</h2>
+    <div id="bag-list"></div>
+    <button class="btn" onclick="closeBag()">CLOSE</button>
+  </div>
+</div>
+
+
+
+<script src="./monsters.js"></script>
+<script src="./weapons.js"></script>
+<script src="./armor.js"></script>
+
+<script>
+
+
+
+
+
+
+ 
+ 
+
+
+
+
+const WORLD = {
+  "Map1": { name: "SHADOW PLAINS", grid: [[1,1,1,1,1,1,1,1,1,1],[1,0,12,9,13,0,0,10,0,1],[1,0,12,9,13,0,0,10,0,1],[1,0,1,1,6,5,0,1,0,1],[1,0,0,14,0,0,14,0,3,1],[1,0,0,14,0,0,14,0,3,1],[1,0,0,14,0,0,14,0,3,1],[1,0,0,14,0,0,14,25,3,1],[1,0,0,14,0,0,14,0,26,1],[1,0,0,14,0,0,14,0,27,1],[1,0,0,14,0,0,14,0,28,1],[1,1,1,1,1,1,1,1,1,1]], portals: { 3: "Map2" }, spawn: {x:1, y:1} },
+  "Map2": { name: "REED GROVE", grid: [[1,1,1,1,1,1,1,1,1,1],[1,14,14,12,0,12,14,12,0,1],[1,0,1,1,1,1,1,1,0,1],[1,3,0,0,0,0,0,14,9,1],[1,0,0,14,0,0,14,0,3,1],[1,0,0,14,0,0,14,0,3,1],[1,0,0,14,0,0,14,0,3,1],[1,0,0,14,0,1,14,0,3,1],[1,0,0,1,15,1,14,0,3,1],[1,0,1,1,0,1,14,0,3,1],[1,0,1,14,16,1,14,0,3,1],[1,1,1,1,1,1,1,1,1,1]], portals: { 3: "Map3" , 16: "treechest"}, spawn: {x:1, y:1} },
+  "treechest": { name: "treasure trees", grid: [[1,1,1,1,1,1,1,1,1,1],[1,14,14,12,0,12,14,12,0,1],[1,0,1,1,1,1,1,1,0,1],[1,3,0,0,0,0,0,14,9,1],[1,0,0,14,0,0,14,1,49,1],[1,0,0,14,0,0,14,1,49,1],[1,0,0,14,0,0,14,1,49,1],[1,117,0,14,0,1,14,1,49,1],[1,117,0,1,15,1,14,1,49,1],[1,0,1,1,0,1,14,1,49,1],[1,106,1,14,0,1,14,1,3,1],[1,1,1,1,1,1,1,1,1,1]], portals: { 3: "moore" , 106: "Cove" }, spawn: {x:1, y:1} },
+
+
+
+
+"moore": { name: "green moore", grid: [[1,1,1,1,1,1,1,1,1,1],[1,1,0,14,0,14,0,12,0,1],[1,3,14,14,14,1,1,1,0,1],[1,14,0,0,0,14,0,0,9,1],
+
+[1,14,0,0,0,14,106,0,9,1],
+
+[1,1,1,1,1,1,1,1,1,1]], portals: { 3: "Map4" ,106: "Cove"}, spawn: {x:1, y:1} }, 
+  
+
+"Map3": { name: "BIG GROVE", grid: [[1,1,1,1,1,1,1,1,1,1],[1,14,0,12,0,12,0,12,0,1],[1,3,1,1,1,1,1,1,0,1],[1,14,0,0,0,14,0,0,9,1],
+
+[1,14,0,0,0,14,106,0,9,1],
+
+[1,1,1,1,1,1,1,1,1,1]], portals: { 3: "Map4" ,106: "Cove"}, spawn: {x:1, y:1} }, 
+
+
+
+"Cove": { name: "Red cove", grid: [[1,1,1,1,1,1,1,1,1,1],[1,14,14,12,0,12,14,12,0,1],[1,0,1,1,1,1,1,1,0,1],[1,3,0,0,0,0,0,14,9,1],[1,0,14,14,0,0,14,0,3,1],[1,14,14,14,0,0,14,0,3,1],[1,14,14,14,0,0,14,0,3,1],[1,14,14,14,0,1,14,0,3,1],[1,14,14,1,15,1,14,0,3,1],[1,0,1,1,0,1,14,0,3,1],[1,0,1,14,16,1,14,0,3,1],[1,1,1,1,1,1,1,1,1,1]], portals: { 3: "Map3" , 16: "treechest"}, spawn: {x:1, y:1} },
+  
+
+
+
+
+"Map4": { name: "ANCIENT REEDS", grid: [[1,1,1,1,1,1,1,1,1,1],[1,14,0,12,0,12,0,12,0,1],[1,0,1,1,1,1,1,1,14,1],[1,0,0,0,3,0,0,0,55,1],[1,0,0,0,3,0,0,0,54,1],[1,9,0,0,3,0,0,0,53,1],[1,9,0,0,3,0,0,0,52,1],[1,9,0,0,3,0,0,0,51,1],[1,9,0,0,3,0,0,0,50,1],[1,9,0,0,3,0,0,0,49,1],[1,9,9,9,3,0,0,0,48,1],[1,1,1,1,1,1,1,1,1,1]], portals: { 3: "Map1" }, spawn: {x:1, y:1} }
+};
+
+
+
+
+
+
+
+
+
+let p = { lvl:1, xp:0, nextXp:100, str:0, def:0, hp:0, maxHp:0, gold:20, x:1, y:1, currentMap: "Map1", weapon: {name:"Dagger", dice:4, wpnStr: 4, wpnDef: 0, armStr: 0, armDef: 0, value: 90, icon: "🗡️"}, armor: {name:"Rags", dice:2, wpnStr: 0, wpnDef: 0, armStr: 0, armDef:0, value: 2, icon:"🥋"}, inventory: [], reedsCollected: 0, isMounted: false };
+let activeE = null; let pTurn = true; let isSelling = false;
+
+// --- PERSISTENCE ENGINE ---
+const SAVE_KEY = "thundercloud_rpg_v4_save";
+
+function saveGame() {
+  const saveSnapshot = { player: p, world: WORLD };
+  localStorage.setItem(SAVE_KEY, JSON.stringify(saveSnapshot));
+  writeLog("💾 System state auto-saved.");
+}
+
+function loadGame() {
+  const savedData = localStorage.getItem(SAVE_KEY);
+  if (!savedData) return false;
+  try {
+    const parsed = JSON.parse(savedData);
+    p = parsed.player;
+    Object.assign(WORLD, parsed.world);
+    writeLog("✨ Previous timeline sequence restored.");
+    return true;
+  } catch(e) {
+    console.error("Save state decryption issue:", e);
+    return false;
+  }
+}
+
+// --- FILE-BASED EXTERNAL PERSISTENCE (DOWNLOAD / UPLOAD WITH FILE NAME CHOOSER) ---
+function downloadSaveFile() {
+  // Ask player for a custom save name
+  let filename = prompt("Enter a name for your character save file:", "Hero_Save");
+  if (filename === null) return; // Action aborted
+  filename = filename.trim() === "" ? "Hero_Save" : filename.trim();
+
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ player: p, world: WORLD }));
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("download", `${filename}.json`);
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+  writeLog(`💾 Save compiled as ${filename}.json`);
+}
+
+function uploadSaveFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (!parsed.player || !parsed.world) {
+        alert("Invalid file structure. Make sure this is a real Thundercloud character save file.");
+        return;
+      }
+      
+      // Overwrite current operational variable maps
+      p = parsed.player;
+      Object.assign(WORLD, parsed.world);
+
+      // Save to localStorage immediately so a refresh doesn't drop it
+      saveGame();
+
+      // Clear the input fields so the same file can be uploaded back-to-back if needed
+      document.getElementById('title-file-load').value = "";
+      document.getElementById('hud-file-load').value = "";
+
+      // Push active UI layouts down
+      document.getElementById('start-screen').classList.remove('active');
+      document.getElementById('game-ui').classList.add('active');
+      
+      renderMap();
+      updateUI();
+      writeLog(`📁 Successfully synchronized file data!`);
+    } catch(err) {
+      alert("Error reading file context. Corrupted formatting structural hierarchy.");
+    }
+  };
+  reader.readAsText(file);
+}
+
+function resetGame() {
+  if (confirm("Permanently wipe local profile data and restart?")) {
+    localStorage.removeItem(SAVE_KEY);
+    location.reload();
+  }
+}
+
+window.onload = function() {
+  if (loadGame()) {
+    document.getElementById('start-screen').classList.remove('active');
+    document.getElementById('game-ui').classList.add('active');
+    renderMap();
+    updateUI();
+  }
+};
+
+function rollStats() {
+  p.str = Math.floor(Math.random()*16)+5; p.def = Math.floor(Math.random()*16)+5; p.maxHp = Math.floor(Math.random()*61)+55; p.hp = p.maxHp;
+  document.getElementById('v-str').innerText = p.str; document.getElementById('v-def').innerText = p.def; document.getElementById('v-hp').innerText = p.maxHp;
+  updateBar('b-str', p.str, 100); updateBar('b-def', p.def, 100); updateBar('b-hp', p.maxHp, 1120);
+  document.getElementById('begin-btn').style.opacity = "1";
+  saveGame();
+}
+
+function beginQuest() { 
+  if(p.str === 0) return; 
+  document.getElementById('start-screen').classList.remove('active'); 
+  document.getElementById('game-ui').classList.add('active'); 
+  if (!localStorage.getItem(SAVE_KEY)) {
+    loadMap("Map1"); 
+  } else {
+    renderMap();
+    updateUI();
+  }
+}
+
+function loadMap(id) { p.currentMap = id; const m = WORLD[id]; p.x = m.spawn.x; p.y = m.spawn.y; renderMap(); updateUI(); saveGame(); }
+
+function renderMap() {
+  const m = WORLD[p.currentMap]; const grid = document.getElementById('map-grid'); grid.innerHTML = ''; grid.style.gridTemplateColumns = `repeat(${m.grid[0].length}, 1fr)`;
+  m.grid.forEach((row, y) => { row.forEach((val, x) => {
+    const cell = document.createElement('div'); cell.className = 'cell' + (val===1?' wall':'') + (val===3?' portal':'')+ 
+                       (val === 7 ? ' tree' : '');
+
+
+    // Replace the old line with this logic:
+if (x === p.x && y === p.y) {
+  if (p.isMounted) {
+    cell.innerHTML = '🐎'; // Keep the horse emoji for now if mounted, or change it too
+  } else {
+    cell.innerHTML = '<img src="player.png" class="player-sprite">';
+  }
+}
+
+
+
+    else if(val===12) cell.innerHTML = '🦟'; else if(val===13) cell.innerHTML = '🐜'; else if(val===10) cell.innerHTML = '💧'; else if(val===9) cell.innerHTML = '👹'; 
+    else if(val===14) cell.innerHTML = '🌿'; else if(val===2) cell.innerHTML = '🌫️'; 
+    else if(val===5) cell.innerHTML = '💰'; 
+    else if(val===6) cell.innerHTML = '🎣'; 
+    else if(val===3) cell.innerHTML = '🌀';
+
+else if(val===106) cell.innerHTML = '🔴';
+
+
+
+    else if(val===16) cell.innerHTML = '🧶';
+    else if(val===25) cell.innerHTML = '🤖';
+    else if(val===26) cell.innerHTML = '🔥';
+    else if(val===27) cell.innerHTML = '🐞';
+    else if(val===28) cell.innerHTML = '🦅';
+    else if(val===117) cell.innerHTML = '🐿️';
+    else if(val===55) cell.innerHTML = '🐲';
+    else if(val===54) cell.innerHTML = '🐲';
+    else if(val===53) cell.innerHTML = '🟩';
+    else if(val===52) cell.innerHTML = '🟩';
+    else if(val===51) cell.innerHTML = '🟩';
+    else if(val===50) cell.innerHTML = '🟩';
+    else if(val===49) cell.innerHTML = '🦴';
+    else if(val===48) cell.innerHTML = '🐉';
+    else if(val===15) cell.innerHTML = '🤖';
+
+    cell.onclick = () => move(x,y); grid.appendChild(cell);
+  });});
+}
+
+function move(nx, ny) {
+  const m = WORLD[p.currentMap]; if(Math.abs(nx-p.x)>1 || Math.abs(ny-p.y)>1 || m.grid[ny][nx]===1) return;
+  p.x = nx; p.y = ny; const tile = m.grid[ny][nx];
+  
+  let ambushChance = p.isMounted ? 0.1 : 0.4;
+  if(tile === 14 && Math.random() < ambushChance) { writeLog("An ambush in the grass!"); startBattle('mosq'); }
+  else if(tile === 2) { writeLog("The fog chills you..."); p.hp -= 2; if(p.hp <= 0) p.hp = 1; }
+  
+  if(tile===12) startBattle('mosq'); 
+  else if(tile===13) startBattle('alpha_ant'); 
+  else if(tile===10) startBattle('slime'); 
+  else if(tile===15) startBattle('torquen');
+  else if(tile===117) startBattle('dweables');
+  else if(tile===25) startBattle('termi');
+  else if(tile===26) startBattle('flame');
+  else if(tile===55) startBattle('dragonleach_lhead');
+  else if(tile===54) startBattle('dragonleach_rhead');
+  else if(tile===53) startBattle('dragonleach_body1');
+  else if(tile===52) startBattle('dragonleach_body2');
+  else if(tile===51) startBattle('dragonleach_body3');
+  else if(tile===50) startBattle('dragonleach_body4');
+  else if(tile===49) startBattle('dragonleach_bone');
+  else if(tile===48) startBattle('dragonleach_tail');
+  else if(tile===27) startBattle('bugmug');
+  else if(tile===28) startBattle('red eagle');
+  else if(tile===9) startBattle('guardian'); 
+  else if(tile===5) openMerchant(); 
+  else if(tile===6) openFisher();
+  else if(tile===3) loadMap(m.portals[3]);
+  else if(tile===16) loadMap(m.portals[16]);
+else if(tile===106) loadMap(m.portals[106]);
+
+  renderMap(); updateUI(); saveGame();
+}
+
+// --- SHOP LOGIC ---
+function openMerchant() {
+  document.getElementById('merchant-overlay').style.display = 'flex';
+  document.getElementById('quest-status').innerText = `Progress: ${p.reedsCollected}/5 Arundo Reeds.`;
+  document.getElementById('quest-btn').disabled = (p.reedsCollected < 5);
+  
+  const shopContainer = document.getElementById('dave-weapons-list');
+  shopContainer.innerHTML = '';
+  
+  DAVE_WEAPONS.forEach((wpn) => {
+    const row = document.createElement('div');
+    row.className = 'shop-row';
+    row.innerHTML = `
+      <span>${wpn.icon} <b>${wpn.name}</b> (+${wpn.wpnDef} WD / +${wpn.wpnStr} WS)</span>
+      <button onclick="buyWeaponDirect('${wpn.name}', ${wpn.value}, ${wpn.wpnStr}, ${wpn.wpnDef}, '${wpn.icon}')" 
+              style="padding:3px 6px; font-size:0.55rem; background:#111; color:var(--gold); border:1px solid var(--border); border-radius:3px; cursor:pointer;">
+        BUY ${wpn.value}G
+      </button>
+    `;
+    shopContainer.appendChild(row);
+  });
+}
+
+function buyWeaponDirect(name, cost, wpnStr, wpnDef, icon) {
+  if(p.gold >= cost) {
+    p.gold -= cost;
+    p.inventory.push({type:'weapon', name:name, wpnStr:wpnStr, wpnDef:wpnDef, armStr:0, armDef:0, value: Math.floor(cost/2), icon:icon});
+    writeLog(`Bought ${name}.`);
+    updateUI();
+    saveGame();
+  } else {
+    writeLog("Not enough gold.");
+  }
+}
+
+function closeMerchant() { document.getElementById('merchant-overlay').style.display = 'none'; isSelling = false; }
+
+function openFisher() { 
+  document.getElementById('fisher-overlay').style.display = 'flex'; 
+  
+  const shopContainer = document.getElementById('fisher-armor-list');
+  shopContainer.innerHTML = '';
+  
+  FISHER_ARMOR.forEach((arm) => {
+    const row = document.createElement('div');
+    row.className = 'shop-row';
+    row.innerHTML = `
+      <span>${arm.icon} <b>${arm.name}</b> (+${arm.armDef} AD / +${arm.armStr} AS)</span>
+      <button onclick="buyArmorDirect('${arm.name}', ${arm.value}, ${arm.armDef}, ${arm.armStr}, '${arm.icon}')" 
+              style="padding:3px 6px; font-size:0.55rem; background:#111; color:#457b9d; border:1px solid var(--border); border-radius:3px; cursor:pointer;">
+        BUY ${arm.value}G
+      </button>
+    `;
+    shopContainer.appendChild(row);
+  });
+}
+
+function buyArmorDirect(name, cost, armDef, armStr, icon) {
+  if(p.gold >= cost) {
+    p.gold -= cost;
+    p.inventory.push({type:'armor', name:name, armDef:armDef, armStr:armStr, wpnDef:0, wpnStr:0, value: Math.floor(cost/2), icon:icon});
+    writeLog(`Bought ${name}.`);
+    updateUI();
+    openFisher(); 
+    saveGame();
+  } else {
+    writeLog("Not enough gold.");
+  }
+}
+
+function closeFisher() { document.getElementById('fisher-overlay').style.display = 'none'; isSelling = false; }
+
+function buyItem(n, cost, type, d=0, b=0, h=0) {
+  if(p.gold >= cost) {
+    p.gold -= cost;
+    if(type === 'armor') p.inventory.push({type:'armor', name:n, armDef: d || 6, armStr:0, wpnDef:0, wpnStr:0, value: Math.floor(cost/2), icon:'🛡️'});
+    else if(type === 'weapon') p.inventory.push({type:'weapon', name:n, dice:d, wpnStr:ws, wpnDef:wd, armStr:as, armDef:ad, value: Math.floor(cost/2), icon:'⚔️'});
+    else if(type === 'mount') p.inventory.push({type:'mount', name:n, value: Math.floor(cost/2), icon:'🐴'});
+    else p.inventory.push({name:n, heal:h || 30, value: Math.floor(cost/2), icon:'🥪', type: 'food'});
+    writeLog(`Bought ${n}.`); 
+    updateUI();
+    saveGame();
+  } else { writeLog("Not enough gold."); }
+}
+
+// --- BATTLE & LEVELING ---
+function startBattle(k) {
+  p.inBattle = true; 
+  activeE = {...MONSTERS[k]}; 
+  document.getElementById('battle-overlay').style.display='flex'; 
+  document.getElementById('e-name').innerText = activeE.name; 
+  document.getElementById('e-img').src = activeE.img || "placeholder.png";
+  document.getElementById('combat-log').innerHTML = '';
+  pTurn = true; 
+  updateUI();
+}
+
+// --- BATTLE & LEVELING ---
+function battleAction(a) {
+  if(!pTurn || !activeE) return;
+  let dmg = 0;
+  
+  if(a === 'attack' || a === 'power') {
+    // --- 1. PLAYER ATTACK DICE POOLS ---
+    let rollStr = Math.floor(Math.random() * p.str) + 1;
+    let rollWpnDice = Math.floor(Math.random() * (p.weapon.dice || 0)) + 1;
+    let rollWpnStr = Math.floor(Math.random() * (p.weapon.wpnStr || 0)) + 1;
+    
+    let totalAttack = rollStr + rollWpnDice + rollWpnStr;
+    
+    // If it's a power hit, apply the massive x2 modifier and charge 5 HP
+    if (a === 'power') {
+      p.hp -= 5;
+      totalAttack = totalAttack * 2;
+    }
+
+    // --- 2. ENEMY DEFENSE DICE POOLS ---
+    let rollEnemyDef = Math.floor(Math.random() * activeE.def) + 1;
+    
+    // Safe check in case the monster doesn't wear separate armor gear
+    let enemyArmorDicePool = (activeE.armor && activeE.armor.dice) ? activeE.armor.dice : 0;
+    let enemyArmorDefPool = (activeE.armor && activeE.armor.armDef) ? activeE.armor.armDef : 0;
+    
+    let rollArmDice = enemyArmorDicePool > 0 ? Math.floor(Math.random() * enemyArmorDicePool) + 1 : 0;
+    let rollArmDef = enemyArmorDefPool > 0 ? Math.floor(Math.random() * enemyArmorDefPool) + 1 : 0;
+    
+    let totalDefense = rollEnemyDef + rollArmDice + rollArmDef;
+
+    // --- 3. DAMAGE RESOLUTION ---
+    // A standard attack guarantees min 1 dmg; power hit guarantees min 5 dmg
+    let minDmg = (a === 'power') ? 5 : 1;
+    dmg = Math.max(totalAttack - totalDefense, minDmg);
+    
+    if (a === 'power') {
+      logC(`💥 POWER HIT! You deal ${dmg} but lose 5 HP.`);
+    } else {
+      logC(`You strike for ${dmg}.`);
+    }
+
+  } else if(a === 'flee') { 
+    if(Math.random() > 0.5) { 
+      endBattle(); 
+      writeLog("You escaped."); 
+      return; 
+    } else { 
+      logC("Failed to flee!"); 
+    } 
+  }
+
+  // Apply damage to enemy and handle turn exchange
+  activeE.hp -= dmg; 
+  if(activeE.hp <= 0) {
+    winBattle(); 
+  } else { 
+    pTurn = false; 
+    enemyTurn(); 
+  }
+  updateUI();
+}
+
+function enemyTurn() {
+  setTimeout(() => {
+    if(!p.inBattle) return;
+    
+    // --- ENEMY ATTACK POOL ---
+    let enemyAttackRoll = Math.floor(Math.random() * activeE.str) + 1;
+    
+    // --- PLAYER DEFENSE POOLS ---
+    let playerDefRoll = Math.floor(Math.random() * p.def) + 1;
+    let playerArmDicePool = (p.armor && p.armor.dice) ? p.armor.dice : 0;
+    let playerArmDefPool = (p.armor && p.armor.armDef) ? p.armor.armDef : 0;
+    
+    let playerArmDiceRoll = playerArmDicePool > 0 ? Math.floor(Math.random() * playerArmDicePool) + 1 : 0;
+    let playerArmDefRoll = playerArmDefPool > 0 ? Math.floor(Math.random() * playerArmDefPool) + 1 : 0;
+    
+    let totalPlayerDefense = playerDefRoll + playerArmDiceRoll + playerArmDefRoll;
+    
+    // Calculate final clean damage taken by player
+    let dmg = Math.max(enemyAttackRoll - totalPlayerDefense, 1);
+    
+    p.hp -= dmg; 
+    logC(`${activeE.name} deals ${dmg} damage.`); 
+    pTurn = true; 
+    updateUI();
+    
+    if(p.hp <= 0) { 
+      alert("Game Over"); 
+      localStorage.removeItem(SAVE_KEY); 
+      location.reload(); 
+    } 
+  }, 600);
+}
+function winBattle() {
+  p.gold += activeE.gold; p.xp += activeE.xp;
+  writeLog(`Victory! +${activeE.xp} EXP, +${activeE.gold}G`);
+  if(activeE.name === "Arundo Guardian") p.reedsCollected++;
+  if(activeE.customDrop && Math.random() < activeE.customDrop.chance) p.inventory.push(activeE.customDrop);
+  if(activeE.lootTable && Math.random() < 0.5) p.inventory.push(activeE.lootTable[0]);
+  WORLD[p.currentMap].grid[p.y][p.x] = 0; endBattle(); checkLvl();
+}
+function endBattle() { p.inBattle = false; activeE = null; document.getElementById('battle-overlay').style.display='none'; renderMap(); updateUI(); saveGame(); }
+
+function checkLvl() {
+  if(p.xp >= p.nextXp) {
+    p.lvl++; p.xp -= p.nextXp; p.nextXp = Math.floor(p.nextXp * 1.5);
+    p.maxHp += 10; p.hp = p.maxHp; document.getElementById('lvl-overlay').style.display = 'flex';
+  }
+  updateUI();
+  saveGame();
+}
+function applyLvl(stat) {
+  if(stat === 'str') p.str += 2; else p.def += 2;
+  document.getElementById('lvl-overlay').style.display = 'none'; updateUI(); saveGame();
+}
+
+function turnInQuest() {
+  p.reedsCollected -= 5; p.inventory.push({type: "weapon", name: "Master Blade", dice: 20, wpnStr:20 , wpnDef:5, armStr:0, armDef: 5, value: 500, icon: "⚔️"});
+  writeLog("Dave hands you the Master Blade."); openMerchant(); saveGame();
+}
+
+function dismountMount() {
+  if (p.isMounted) {
+    p.isMounted = false;
+    writeLog("You dismounted your horse.");
+    renderMap();
+    updateUI();
+    saveGame();
+  }
+}
+
+// --- INVENTORY ---
+function toggleBag(inCombat=false, sellMode=false) {
+  isSelling = sellMode; document.getElementById('bag-overlay').style.display = 'flex';
+  document.getElementById('bag-title').innerText = isSelling ? "TRADE WINDOW" : "PACK";
+  const l = document.getElementById('bag-list'); l.innerHTML = '';
+  p.inventory.forEach((it, i) => {
+    const d = document.createElement('div'); d.style.display='flex'; d.style.justifyContent='space-between'; d.style.padding='10px'; d.style.background='#000'; d.style.margin='2px';
+    let info = it.armDef ? ` (+${it.armDef} DEF)` : (it.dice ? ` (${it.dice}d+${it.bonus})` : "");
+    d.innerHTML = `<span>${it.icon || '📦'} ${it.name}${info}</span>`;
+    const btn = document.createElement('button'); btn.className='btn'; btn.style.width='85px'; btn.style.margin='0';
+    if(isSelling) {
+      btn.innerText = `SELL (${it.value}G)`;
+      btn.onclick = () => { 
+        if (it.type === 'mount' && p.isMounted) dismountMount();
+        p.gold += it.value; p.inventory.splice(i,1); toggleBag(false, true); updateUI(); saveGame();
+      };
+    } else {
+      let canEquip = (it.type === 'armor' || it.type === 'weapon' || it.armDef || it.dice);
+      btn.innerText = canEquip ? 'EQUIP' : (it.type === 'mount' ? 'MOUNT' : (it.heal ? 'USE' : 'JUNK'));
+      btn.onclick = () => {
+        if(it.heal) { p.hp = Math.min(p.maxHp, p.hp+it.heal); p.inventory.splice(i,1); }
+        else if(it.type === 'mount') { p.isMounted = true; writeLog("You mounted your horse!"); renderMap(); }
+        else if(it.type==='armor' || it.armDef) { 
+          let old = p.armor; p.armor = it; p.inventory.splice(i,1); 
+          if(old.name !== "Rags") p.inventory.push(old); 
+        }
+        else if(it.type==='weapon' || it.dice) { 
+          let old = p.weapon; p.weapon = it; p.inventory.splice(i,1); 
+          if(old.name !== "Dagger") p.inventory.push(old); 
+        }
+        closeBag(); updateUI(); if(inCombat) { pTurn=false; enemyTurn(); } saveGame();
+      };
+    }
+    d.appendChild(btn); l.appendChild(d);
+  });
+}
+function closeBag() { document.getElementById('bag-overlay').style.display = 'none'; }
+
+function updateUI() {
+  document.getElementById('hp-main-txt').innerText = `${p.hp}/${p.maxHp} HP`;
+  document.getElementById('p-hp-main').style.width = (p.hp/p.maxHp*100)+"%";
+  document.getElementById('lvl-tag').innerText = `LVL ${p.lvl}`;
+  document.getElementById('xp-txt').innerText = `${p.xp}/${p.nextXp}`;
+  document.getElementById('p-xp-main').style.width = (p.xp/p.nextXp*100)+"%";
+  document.getElementById('p-wpn-tag').innerText = `W: ${p.weapon.name}`;
+  document.getElementById('p-arm-tag').innerText = `A: ${p.armor.name} (+${p.armor.armDef})`;
+  document.getElementById('p-gold-tag').innerText = `G: ${p.gold}`;
+  
+  document.getElementById('dismount-ui-btn').style.display = p.isMounted ? 'block' : 'none';
+
+  if(activeE) {
+    // Sync text metrics safely
+    document.getElementById('b-p-val').innerText = p.hp; 
+    document.getElementById('b-e-val').innerText = activeE.hp; 
+    
+    // Safely update player combat bar, checking that maxHp is valid
+    let pMax = p.maxHp || 1;
+    document.getElementById('b-p-fill').style.width = Math.max(0, (p.hp / pMax * 100)) + "%";
+    
+    // Safely update enemy combat bar, checking that maxHp is valid
+    let eMax = activeE.maxHp || 1;
+    document.getElementById('b-e-fill').style.width = Math.max(0, (activeE.hp / eMax * 100)) + "%";
+  }
+}
+
+
+
+
+
+function updateBar(id, v, m) { document.getElementById(id).style.width = (v/m*100) + "%"; }
+function writeLog(m) { const l = document.getElementById('game-log'); l.innerHTML = `<div class="log-entry">${m}</div>` + l.innerHTML; }
+function logC(m) { const l = document.getElementById('combat-log'); l.innerHTML += `<div class=\"log-entry\">${m}</div>`; l.scrollTop = l.scrollHeight; }
+
+function closeBag() { document.getElementById('bag-overlay').style.display = 'none'; }
+
+</script>
+</body>
+</html>
