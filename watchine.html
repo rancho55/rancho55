@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tactical Chronograph & Compass</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+        body {
+            background-color: #08090c;
+            background-image: 
+                radial-gradient(circle at 50% 30%, rgba(8, 9, 12, 0.4) 0%, rgba(4, 5, 7, 0.85) 85%),
+                url('./bg.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 15px;
+            box-sizing: border-box;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            width: 100%;
+            max-width: 460px;
+            z-index: 10;
+        }
+
+        @media (min-width: 850px) {
+            .app-container {
+                flex-direction: row;
+                max-width: 880px;
+                justify-content: center;
+                align-items: flex-start;
+            }
+        }
+
+        .instrument-housing {
+            position: relative;
+            background: linear-gradient(135deg, rgba(37, 40, 48, 0.85) 0%, rgba(17, 19, 24, 0.9) 50%, rgba(8, 9, 12, 0.95) 100%);
+            backdrop-filter: blur(4px);
+            padding: 24px;
+            border-radius: 36px;
+            box-shadow: 
+                0 0 0 2px rgba(255, 255, 255, 0.04),
+                0 4px 10px rgba(0, 0, 0, 0.6),
+                0 25px 60px rgba(0, 0, 0, 0.85),
+                inset 0 2px 4px rgba(255,255,255,0.15);
+            border: 4px solid #181a20;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .screw {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: linear-gradient(135deg, #555 0%, #222 100%);
+            border-radius: 50%;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.9), 0 1px 1px rgba(255,255,255,0.08);
+        }
+        .screw-tl { top: 14px; left: 14px; }
+        .screw-tr { top: 14px; right: 14px; }
+        .screw-bl { bottom: 14px; left: 14px; }
+        .screw-br { bottom: 14px; right: 14px; }
+
+        .instrument-crown {
+            position: absolute;
+            top: -16px;
+            width: 38px;
+            height: 16px;
+            background: linear-gradient(90deg, #111318 0%, #2e333d 30%, #434957 50%, #2e333d 70%, #111318 100%);
+            border-radius: 4px 4px 0 0;
+            box-shadow: 0 -2px 6px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .gauge-viewport {
+            position: relative;
+            padding: 6px;
+            background: rgba(6, 7, 10, 0.5);
+            border-radius: 50%;
+            box-shadow: 
+                inset 0 12px 24px rgba(0,0,0,0.95),
+                0 2px 3px rgba(255,255,255,0.03);
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            box-sizing: border-box;
+        }
+
+        #stopwatchCanvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            display: block;
+        }
+
+        .led-panel-housing {
+            margin-top: 20px;
+            width: 100%;
+            box-sizing: border-box;
+            background: #030406;
+            padding: 8px 12px;
+            border-radius: 14px;
+            box-shadow: 
+                inset 0 10px 15px rgba(0, 0, 0, 0.95), 
+                inset 0 2px 4px rgba(0, 0, 0, 0.8),
+                0 1px 0px rgba(255, 255, 255, 0.05),
+                0 6px 12px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.02);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #digitalLedCanvas {
+            width: 100%;
+            height: auto;
+            max-width: 340px;
+            display: block;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            width: 100%;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 14px 10px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: 1px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            text-shadow: 0 -1px 1px rgba(0,0,0,0.5);
+            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        #startStopBtn {
+            background: linear-gradient(180deg, #ff3b30 0%, #aa120a 100%);
+            color: #ffffff;
+            box-shadow: 0 4px 0 #700904, 0 6px 15px rgba(255, 59, 48, 0.25), inset 0 1px 2px rgba(255,255,255,0.3);
+        }
+        #startStopBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #700904, 0 2px 8px rgba(255, 59, 48, 0.15); }
+        #startStopBtn.running {
+            background: linear-gradient(180deg, #2ea043 0%, #165220 100%);
+            box-shadow: 0 4px 0 #0d3314, 0 6px 15px rgba(46, 160, 67, 0.25), inset 0 1px 2px rgba(255,255,255,0.3);
+        }
+
+        #lapBtn, #resetBtn {
+            background: linear-gradient(180deg, #242b35 0%, #0f1115 100%);
+            color: #cbd5e1;
+            box-shadow: 0 4px 0 #07080a, 0 6px 12px rgba(0,0,0,0.4);
+        }
+        #lapBtn:active, #resetBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #07080a; }
+
+        .control-panel {
+            background: linear-gradient(135deg, rgba(28, 30, 38, 0.9) 0%, rgba(14, 16, 20, 0.95) 100%);
+            backdrop-filter: blur(8px);
+            border: 2px solid rgba(255, 255, 255, 0.05);
+            border-radius: 28px;
+            padding: 20px;
+            width: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .panel-section-title {
+            font-size: 0.8rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #8f9cae;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding-bottom: 6px;
+            margin: 0;
+        }
+
+        .segment-control {
+            display: flex;
+            background: #0f1115;
+            padding: 3px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .segment-btn {
+            flex: 1;
+            padding: 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-radius: 5px;
+            cursor: pointer;
+            color: #64748b;
+            transition: all 0.15s ease;
+        }
+        .segment-btn.active {
+            background: linear-gradient(180deg, #3b4252 0%, #1e222b 100%);
+            color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+        }
+
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        .switch-container {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+        .switch-container input { opacity: 0; width: 0; height: 0; }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #242731;
+            transition: .2s;
+            border-radius: 34px;
+        }
+        .slider::before {
+            position: absolute;
+            content: "";
+            height: 16px; width: 16px;
+            left: 3px; bottom: 3px;
+            background-color: #cbd5e1;
+            transition: .2s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #2ea043; }
+        input:checked + .slider::before { transform: translateX(20px); background-color: #ffffff; }
+
+        .lap-panel {
+            background: #06080a;
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 14px;
+            max-height: 100px;
+            overflow-y: auto;
+            padding: 6px;
+        }
+        .lap-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 12px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="instrument-housing">
+        <div class="instrument-crown"></div>
+        <div class="screw screw-tl"></div>
+        <div class="screw screw-tr"></div>
+        <div class="screw screw-bl"></div>
+        <div class="screw screw-br"></div>
+
+        <div class="gauge-viewport">
+            <canvas id="stopwatchCanvas" width="800" height="800"></canvas>
+        </div>
+
+        <div class="led-panel-housing">
+            <canvas id="digitalLedCanvas" width="340" height="46"></canvas>
+        </div>
+
+        <div class="controls">
+            <button id="startStopBtn">START</button>
+            <button id="lapBtn">LAP</button>
+            <button id="resetBtn">RST</button>
+        </div>
+    </div>
+
+    <div class="control-panel">
+        <div>
+            <h3 class="panel-section-title" style="margin-bottom:8px;">Matrix Core Function</h3>
+            <div class="segment-control">
+                <div class="segment-btn active" id="coreChrono" onclick="setCoreMode('chrono')">Chronograph</div>
+                <div class="segment-btn" id="coreCompass" onclick="setCoreMode('compass')">Compass</div>
+            </div>
+        </div>
+
+        <div id="escapementControls">
+            <h3 class="panel-section-title" style="margin-bottom:8px;">Escapement Logic</h3>
+            <div class="segment-control">
+                <div class="segment-btn active" id="modeSweep" onclick="setEscapement('sweep')">Sweep</div>
+                <div class="segment-btn" id="modeTick" onclick="setEscapement('tick')">Tick</div>
+            </div>
+        </div>
+
+        <div id="splitRecordsPanel">
+            <h3 class="panel-section-title" style="margin-bottom:8px;">Live Split Records</h3>
+            <div class="lap-panel" id="lapPanel">
+                <div class="lap-row" style="justify-content: center; color: #475569;">No splits stored</div>
+            </div>
+        </div>
+
+        <div>
+            <h3 class="panel-section-title" style="margin-bottom:8px;">Active Linkages</h3>
+            <div style="display: flex; flex-direction: column; gap: 8px;" id="linkageContainer">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('stopwatchCanvas');
+    const ctx = canvas.getContext('2d');
+    const ledCanvas = document.getElementById('digitalLedCanvas');
+    const ledCtx = ledCanvas.getContext('2d');
+    
+    const startStopBtn = document.getElementById('startStopBtn');
+    const lapBtn = document.getElementById('lapBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const lapPanel = document.getElementById('lapPanel');
+
+    let coreMode = 'chrono'; 
+    let currentEscapement = 'sweep';
+    let heading = 0; 
+
+    let startTime = 0;
+    let elapsedTime = 0;
+    let isRunning = false;
+    let laps = [];
+
+    let audioCtx = null;
+    let beepInterval = null;
+
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const outerRadius = canvas.width / 2 - 40;
+    const innerRadius = outerRadius - 120;
+
+    const COLORS = {
+        ms: '#FF2222',       
+        centri: '#00FFFF',   
+        seconds: '#FF9800',  
+        minutes: '#a855f7',  
+        hours: '#ff6b6b',
+        compass: '#FF9800',
+        cardinalGlow: '#00ffff' 
+    };
+
+    const segment14Map = {
+        'I': [0,0,0,0,0,0,0,0,1,0,0,1,0,0],
+        'V': [0,0,0,0,0,0,0,0,0,0,0,0,1,1],
+        'X': [0,0,0,0,0,0,0,0,0,1,1,0,1,1],
+        'L': [0,0,0,1,1,1,0,0,0,0,0,0,0,0],
+        'C': [1,0,0,1,1,1,0,0,0,0,0,0,0,0],
+        'D': [1,1,1,1,0,0,0,0,1,0,0,1,0,0],
+        'M': [0,1,1,0,1,1,0,0,0,0,0,0,0,1],
+        '0': [1,1,1,1,1,1,0,0,0,0,0,0,0,0],
+        '°': [1,1,0,0,0,1,1,1,0,0,0,0,0,0],
+        ' ': [0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+    };
+
+    function startOscillatingBeep() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (beepInterval) return;
+
+        beepInterval = setInterval(() => {
+            if (coreMode !== 'compass') { stopBeep(); return; }
+            let osc = audioCtx.createOscillator();
+            let gainNode = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(960, audioCtx.currentTime); 
+            gainNode.gain.setValueAtTime(0.25, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.12);
+        }, 220); 
+    }
+
+    function stopBeep() {
+        if (beepInterval) { clearInterval(beepInterval); beepInterval = null; }
+    }
+
+    function isNearCardinal(deg) {
+        const targets = [0, 90, 180, 270, 360];
+        return targets.some(target => Math.abs(deg - target) <= 2.5);
+    }
+
+    function setCoreMode(mode) {
+        coreMode = mode;
+        document.getElementById('coreChrono').classList.toggle('active', mode === 'chrono');
+        document.getElementById('coreCompass').classList.toggle('active', mode === 'compass');
+        document.getElementById('escapementControls').style.display = mode === 'chrono' ? 'block' : 'none';
+        document.getElementById('splitRecordsPanel').style.display = mode === 'chrono' ? 'block' : 'none';
+        if (mode === 'compass') {
+            startStopBtn.style.visibility = 'hidden';
+            lapBtn.style.visibility = 'hidden';
+            resetBtn.style.visibility = 'hidden';
+            initCompassHardware();
+        } else {
+            startStopBtn.style.visibility = 'visible';
+            lapBtn.style.visibility = 'visible';
+            resetBtn.style.visibility = 'visible';
+            stopBeep();
+        }
+        buildLinkageToggles();
+        updateDisplay();
+    }
+
+    function buildLinkageToggles() {
+        const container = document.getElementById('linkageContainer');
+        if (coreMode === 'chrono') {
+            container.innerHTML = `
+                <div class="toggle-group"><span>Hours</span><label class="switch-container"><input type="checkbox" id="linkHours" checked onchange="updateDisplay()"><span class="slider"></span></label></div>
+                <div class="toggle-group"><span>Minutes</span><label class="switch-container"><input type="checkbox" id="linkMinutes" checked onchange="updateDisplay()"><span class="slider"></span></label></div>
+                <div class="toggle-group"><span>Seconds</span><label class="switch-container"><input type="checkbox" id="linkSeconds" checked onchange="updateDisplay()"><span class="slider"></span></label></div>
+                <div class="toggle-group"><span>Centiseconds</span><label class="switch-container"><input type="checkbox" id="linkCentri" checked onchange="updateDisplay()"><span class="slider"></span></label></div>
+                <div class="toggle-group"><span>Milliseconds</span><label class="switch-container"><input type="checkbox" id="linkMs" checked onchange="updateDisplay()"><span class="slider"></span></label></div>`;
+        } else {
+            container.innerHTML = `<div class="toggle-group"><span>Compass Needle</span><label class="switch-container"><input type="checkbox" id="linkCompass" checked onchange="updateDisplay()"><span class="slider"></span></label></div>`;
+        }
+    }
+
+    function setEscapement(mode) {
+        currentEscapement = mode;
+        document.getElementById('modeSweep').classList.toggle('active', mode === 'sweep');
+        document.getElementById('modeTick').classList.toggle('active', mode === 'tick');
+        if (!isRunning) updateDisplay();
+    }
+
+    function initCompassHardware() {
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            DeviceOrientationEvent.requestPermission().then(r => { if (r === 'granted') window.addEventListener('deviceorientation', handleOrientation, true); }).catch(console.error);
+        } else {
+            window.addEventListener('deviceorientation', handleOrientation, true);
+        }
+    }
+
+    function handleOrientation(e) {
+        let headingRaw = e.webkitCompassHeading || 360 - e.alpha;
+        if (headingRaw !== undefined) {
+            heading = Math.round(headingRaw);
+            if (coreMode === 'compass') updateDisplay();
+        }
+    }
+
+    function convertToRoman(num) {
+        if (num === 0 || num === 360) return "0";
+        const val = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1];
+        const syb = ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"];
+        let roman = "";
+        for (let i = 0; i < val.length; i++) { while (num >= val[i]) { roman += syb[i]; num -= val[i]; } }
+        return roman;
+    }
+
+    function angleDistance(a, b) {
+        let diff = Math.abs(a - b) % (2 * Math.PI);
+        return diff > Math.PI ? (2 * Math.PI) - diff : diff;
+    }
+
+    function drawTicksAndMagicalNumbers(angles) {
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'center';
+        const activationThreshold = 0.15; 
+
+        if (coreMode === 'chrono') {
+            const hasHours = document.getElementById('linkHours')?.checked;
+            const hasMinutes = document.getElementById('linkMinutes')?.checked;
+            const hasSeconds = document.getElementById('linkSeconds')?.checked;
+            const hasCentri = document.getElementById('linkCentri')?.checked;
+
+            for (let i = 0; i < 60; i++) {
+                let angle = (i * 2 * Math.PI) / 60; 
+                let targetAngle = angle - Math.PI / 2;
+                let isMajor = i % 5 === 0;
+                let tickLen = isMajor ? 20 : 10;
+                
+                let angleToPeak = Math.abs(targetAngle - (-Math.PI / 2));
+                if (angleToPeak > Math.PI) angleToPeak = 2 * Math.PI - angleToPeak;
+
+                let distSeconds = hasSeconds ? angleDistance(angles.seconds, angle) : Infinity;
+                let distMinutes = hasMinutes ? angleDistance(angles.minutes, angle) : Infinity;
+                let distCentri = hasCentri ? angleDistance(angles.centri, angle) : Infinity;
+                let minDistance = Math.min(distSeconds, distMinutes, distCentri);
+
+                ctx.save();
+                ctx.beginPath(); 
+                
+                if (minDistance < activationThreshold) {
+                    let richness = angle / (2 * Math.PI); 
+                    let goldPulse = 1 - (angleToPeak / (Math.PI / 2)); 
+                    let r = 255;
+                    let g = Math.floor(150 + (65 * richness * goldPulse));
+                    let b = Math.floor(200 * (1 - goldPulse));
+                    ctx.strokeStyle = `rgb(${r}, ${g}, ${b})`;
+                    ctx.lineWidth = isMajor ? 5 : 3;
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = `rgb(${r}, ${g}, ${b})`;
+                } else {
+                    ctx.strokeStyle = isMajor ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.02)';
+                    ctx.lineWidth = isMajor ? 2.5 : 1.5;
+                    ctx.shadowBlur = 0;
+                }
+
+                ctx.moveTo(cx + (outerRadius - tickLen) * Math.cos(targetAngle), cy + (outerRadius - tickLen) * Math.sin(targetAngle));
+                ctx.lineTo(cx + outerRadius * Math.cos(targetAngle), cy + outerRadius * Math.sin(targetAngle));
+                ctx.stroke();
+                
+                if (isMajor) {
+                    let num = i / 5 === 0 ? 12 : i / 5;
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                    ctx.font = '500 14px "Inter", sans-serif';
+                    ctx.fillText(num, cx + (outerRadius - 40) * Math.cos(targetAngle), cy + (outerRadius - 40) * Math.sin(targetAngle));
+                }
+                ctx.restore();
+            }
+
+            for (let i = 0; i < 24; i++) {
+                let angle = (i * 2 * Math.PI) / 24 - Math.PI / 2;
+                ctx.save();
+                ctx.fillStyle = COLORS.hours; ctx.globalAlpha = 0.5;
+                ctx.font = '400 12px "Inter", sans-serif';
+                ctx.fillText(i, cx + (outerRadius - 80) * Math.cos(angle), cy + (outerRadius - 80) * Math.sin(angle));
+                ctx.restore();
+            }
+
+            for (let i = 0; i < 100; i++) {
+                let angle = (i * 2 * Math.PI) / 100 - Math.PI / 2;
+                ctx.save();
+                ctx.strokeStyle = COLORS.centri; ctx.globalAlpha = 0.2; ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(cx + (innerRadius - 5) * Math.cos(angle), cy + (innerRadius - 5) * Math.sin(angle));
+                ctx.lineTo(cx + innerRadius * Math.cos(angle), cy + innerRadius * Math.sin(angle));
+                ctx.stroke();
+                if (i % 10 === 0) {
+                    ctx.fillStyle = COLORS.centri; ctx.font = '300 9px "Inter", sans-serif';
+                    ctx.fillText(i, cx + (innerRadius - 20) * Math.cos(angle), cy + (innerRadius - 20) * Math.sin(angle));
+                }
+                ctx.restore();
+            }
+        } else {
+            let dialRad = (heading * Math.PI) / 180;
+            for (let i = 0; i < 360; i += 5) {
+                let angle = (i * Math.PI) / 180 - dialRad - Math.PI / 2;
+                let isMajor = i % 30 === 0;
+                let tickLen = isMajor ? 18 : 8;
+                let currentCardinalActive = (i === 0 || i === 90 || i === 180 || i === 270) && isNearCardinal(heading) && Math.abs(heading - i) <= 45;
+                ctx.save();
+                if (currentCardinalActive) {
+                    ctx.strokeStyle = COLORS.cardinalGlow; ctx.shadowBlur = 20; ctx.shadowColor = COLORS.cardinalGlow; ctx.lineWidth = 4;
+                } else {
+                    ctx.strokeStyle = isMajor ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.03)';
+                    ctx.lineWidth = isMajor ? 2 : 1;
+                }
+                ctx.beginPath();
+                ctx.moveTo(cx + (outerRadius - tickLen) * Math.cos(angle), cy + (outerRadius - tickLen) * Math.sin(angle));
+                ctx.lineTo(cx + outerRadius * Math.cos(angle), cy + outerRadius * Math.sin(angle));
+                ctx.stroke();
+                ctx.restore();
+                if (isMajor) {
+                    let label = i === 0 ? "Ø" : i === 90 ? "E" : i === 180 ? "Σ" : i === 270 ? "W" : i;
+                    ctx.save();
+                    ctx.font = '800 20px "Inter", sans-serif';
+                    ctx.fillStyle = currentCardinalActive ? COLORS.cardinalGlow : (i === 0) ? '#ff3b30' : 'rgba(255,255,255,0.4)';
+                    if (currentCardinalActive) { ctx.shadowBlur = 25; ctx.shadowColor = COLORS.cardinalGlow; }
+                    ctx.fillText(label, cx + (outerRadius - 36) * Math.cos(angle), cy + (outerRadius - 36) * Math.sin(angle));
+                    ctx.restore();
+                }
+            }
+        }
+    }
+
+    function drawHand(angle, length, width, color, capRadius = 0) {
+        ctx.save();
+        ctx.lineCap = "round";
+        ctx.shadowBlur = 26; ctx.shadowColor = color; ctx.strokeStyle = color; ctx.lineWidth = width + 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + length * Math.cos(angle - Math.PI / 2), cy + length * Math.sin(angle - Math.PI / 2));
+        ctx.stroke();
+        ctx.shadowBlur = 8; ctx.shadowColor = '#ffffff'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(1, width * 0.4);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + length * Math.cos(angle - Math.PI / 2), cy + length * Math.sin(angle - Math.PI / 2));
+        ctx.stroke();
+        if (capRadius > 0) {
+            ctx.beginPath(); ctx.fillStyle = '#ffffff'; ctx.shadowBlur = 12; ctx.shadowColor = color;
+            ctx.arc(cx + length * Math.cos(angle - Math.PI / 2), cy + length * Math.sin(angle - Math.PI / 2), capRadius, 0, 2*Math.PI);
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+
+    function draw14SegmentDigit(x, y, char, size, color) {
+        const bitmask = segment14Map[char] || segment14Map[' '];
+        const w = size, h = size * 1.8, t = size * 0.12;
+        ledCtx.save(); ledCtx.lineWidth = t; ledCtx.lineCap = 'round';
+        const paths = [
+            () => { ledCtx.moveTo(x + t, y); ledCtx.lineTo(x + w - t, y); },
+            () => { ledCtx.moveTo(x + w, y + t); ledCtx.lineTo(x + w, y + h/2 - t/2); },
+            () => { ledCtx.moveTo(x + w, y + h/2 + t/2); ledCtx.lineTo(x + w, y + h - t); },
+            () => { ledCtx.moveTo(x + t, y + h); ledCtx.lineTo(x + w - t, y + h); },
+            () => { ledCtx.moveTo(x, y + h/2 + t/2); ledCtx.lineTo(x, y + h - t); },
+            () => { ledCtx.moveTo(x, y + t); ledCtx.lineTo(x, y + h/2 - t/2); },
+            () => { ledCtx.moveTo(x + t, y + h/2); ledCtx.lineTo(x + w/2 - t/2, y + h/2); },
+            () => { ledCtx.moveTo(x + w/2 + t/2, y + h/2); ledCtx.lineTo(x + w - t, y + h/2); },
+            () => { ledCtx.moveTo(x + w/2, y + t); ledCtx.lineTo(x + w/2, y + h/2 - t/2); },
+            () => { ledCtx.moveTo(x + w/2 + t, y + t*1.5); ledCtx.lineTo(x + w - t, y + h/2 - t); },
+            () => { ledCtx.moveTo(x + w - t, y + h/2 + t); ledCtx.lineTo(x + w/2 + t, y + h - t*1.5); },
+            () => { ledCtx.moveTo(x + w/2, y + h/2 + t/2); ledCtx.lineTo(x + w/2, y + h - t); },
+            () => { ledCtx.moveTo(x + w/2 - t, y + h/2 + t); ledCtx.lineTo(x + t, y + h - t*1.5); },
+            () => { ledCtx.moveTo(x + t, y + t*1.5); ledCtx.lineTo(x + w/2 - t, y + h/2 - t); }
+        ];
+        ledCtx.strokeStyle = 'rgba(255, 152, 0, 0.01)';
+        paths.forEach(p => { ledCtx.beginPath(); p(); ledCtx.stroke(); });
+        ledCtx.strokeStyle = color; ledCtx.shadowColor = color; ledCtx.shadowBlur = 6;
+        paths.forEach((p, idx) => { if (bitmask[idx]) { ledCtx.beginPath(); p(); ledCtx.stroke(); } });
+        ledCtx.restore();
+    }
+
+    function renderDisplayLog(textString) {
+        ledCtx.clearRect(0, 0, ledCanvas.width, ledCanvas.height);
+        let startX = 20, digitSize = 15, spacing = 12;
+        let color = (coreMode === 'chrono') ? '#ff2a2a' : (isNearCardinal(heading) ? COLORS.cardinalGlow : '#FF9800');
+        if (coreMode === 'chrono') {
+            for (let i = 0; i < textString.length; i++) {
+                let char = textString[i];
+                if (char === ':' || char === '.') {
+                    ledCtx.save(); ledCtx.fillStyle = color; ledCtx.shadowBlur = 6; ledCtx.shadowColor = color;
+                    let dotY = ledCanvas.height / 2;
+                    ledCtx.beginPath(); ledCtx.arc(startX + 3, dotY + (char === ':' ? -6 : 11), 2, 0, 2*Math.PI); 
+                    if (char === ':') ledCtx.arc(startX + 3, dotY + 6, 2, 0, 2*Math.PI);
+                    ledCtx.fill(); ledCtx.restore();
+                    startX += (char === ':' ? 10 : 8);
+                } else {
+                    const b = {'0':[1,1,1,1,1,1,0,0,0,0,0,0,0,0],'1':[0,1,1,0,0,0,0,0,0,0,0,0,0,0],'2':[1,1,0,1,1,0,1,1,0,0,0,0,0,0],'3':[1,1,1,1,0,0,1,1,0,0,0,0,0,0],'4':[0,1,1,0,0,1,1,1,0,0,0,0,0,0],'5':[1,0,1,1,0,1,1,1,0,0,0,0,0,0],'6':[1,0,1,1,1,1,1,1,0,0,0,0,0,0],'7':[1,1,1,0,0,0,0,0,0,0,0,0,0,0],'8':[1,1,1,1,1,1,1,1,0,0,0,0,0,0],'9':[1,1,1,1,0,1,1,1,0,0,0,0,0,0]};
+                    segment14Map[char] = b[char];
+                    draw14SegmentDigit(startX, 8, char, digitSize, color);
+                    startX += digitSize + spacing;
+                }
+            }
+        } else {
+            let centeredX = (ledCanvas.width - (textString.length * (digitSize + spacing))) / 2;
+            for (let i = 0; i < textString.length; i++) { draw14SegmentDigit(centeredX, 8, textString[i], digitSize, color); centeredX += digitSize + spacing; }
+        }
+    }
+
+    function getStringTokens(ms) {
+        return `${String(Math.floor(ms / 3600000)).padStart(2, '0')}:${String(Math.floor((ms % 3600000) / 60000)).padStart(2, '0')}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, '0')}.${String(Math.floor((ms % 1000) / 10)).padStart(2, '0')}`;
+    }
+
+    function updateDisplay() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (coreMode === 'chrono') {
+            let totalMs = elapsedTime, totalSeconds = totalMs / 1000, totalMinutes = totalSeconds / 60, totalHours = totalMinutes / 60;
+            let angles = {};
+            if (currentEscapement === 'sweep') {
+                angles.ms = ((totalMs % 1000) * (2 * Math.PI / 1000));
+                angles.centri = ((totalSeconds % 100) * (2 * Math.PI / 100));
+                angles.seconds = ((totalSeconds % 60) * (2 * Math.PI / 60));
+                angles.minutes = ((totalMinutes % 60) * (2 * Math.PI / 60));
+                angles.hours = ((totalHours % 24) * (2 * Math.PI / 24));
+            } else {
+                angles.ms = 0;
+                angles.centri = (Math.floor(totalSeconds % 100) * (2 * Math.PI / 100));
+                angles.seconds = (Math.floor(totalSeconds % 60) * (2 * Math.PI / 60));
+                angles.minutes = (Math.floor(totalMinutes % 60) * (2 * Math.PI / 60));
+                angles.hours = (Math.floor(totalHours % 24) * (2 * Math.PI / 24));
+            }
+            drawTicksAndMagicalNumbers(angles);
+            if (document.getElementById('linkHours')?.checked) drawHand(angles.hours, innerRadius - 60, 7, COLORS.hours);
+            if (document.getElementById('linkMinutes')?.checked) drawHand(angles.minutes, outerRadius - 90, 5, COLORS.minutes);
+            if (document.getElementById('linkSeconds')?.checked) drawHand(angles.seconds, outerRadius - 30, 3.5, COLORS.seconds);
+            if (document.getElementById('linkCentri')?.checked) drawHand(angles.centri, outerRadius - 8, 2, COLORS.centri, 5);
+            if (document.getElementById('linkMs')?.checked && currentEscapement === 'sweep') drawHand(angles.ms, outerRadius - 8, 1.5, COLORS.ms);
+            renderDisplayLog(getStringTokens(elapsedTime));
+        } else {
+            if (isNearCardinal(heading)) startOscillatingBeep(); else stopBeep();
+            drawTicksAndMagicalNumbers(null);
+            if (document.getElementById('linkCompass')?.checked) drawHand(0, outerRadius - 15, 5, isNearCardinal(heading) ? COLORS.cardinalGlow : COLORS.compass, 6);
+            renderDisplayLog(convertToRoman(heading) + "°");
+        }
+        
+        // Render Lunar Module
+        drawLunarModule();
+
+        ctx.save();
+        ctx.fillStyle = '#111317'; ctx.strokeStyle = '#5f6674'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(cx, cy, 12, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(cx, cy, 4, 0, 2 * Math.PI); ctx.fill();
+        ctx.restore();
+    }
+
+    function renderLoop() {
+        if (isRunning && coreMode === 'chrono') {
+            elapsedTime = Date.now() - startTime;
+            updateDisplay();
+            requestAnimationFrame(renderLoop);
+        }
+    }
+
+    function refreshLapPanel() {
+        if (laps.length === 0) { lapPanel.innerHTML = `<div class="lap-row" style="justify-content: center; color: #475569;">No splits stored</div>`; return; }
+        lapPanel.innerHTML = laps.map((lap, i) => `<div class="lap-row"><span class="lap-index">SPLIT #${String(i + 1).padStart(2, '0')}</span><span class="lap-time">${lap}</span></div>`).reverse().join('');
+    }
+
+    startStopBtn.addEventListener('click', () => {
+        if (!isRunning) {
+            isRunning = true; startTime = Date.now() - elapsedTime;
+            startStopBtn.textContent = 'STOP'; startStopBtn.classList.add('running');
+            requestAnimationFrame(renderLoop);
+        } else {
+            isRunning = false; startStopBtn.textContent = 'START'; startStopBtn.classList.remove('running');
+        }
+    });
+
+    lapBtn.addEventListener('click', () => { if (elapsedTime > 0) { laps.push(getStringTokens(elapsedTime)); refreshLapPanel(); } });
+    resetBtn.addEventListener('click', () => {
+        isRunning = false; startStopBtn.textContent = 'START'; startStopBtn.classList.remove('running');
+        elapsedTime = 0; laps = []; refreshLapPanel(); updateDisplay();
+    });
+
+    buildLinkageToggles();
+    updateDisplay();
+
+    function getLunarPhase() {
+        const LUNAR_CYCLE = 29.53058867;
+        const epoch = new Date(2000, 0, 6, 18, 35, 0).getTime();
+        const now = Date.now();
+        const diff = (now - epoch) / 86400000;
+        const phase = (diff % LUNAR_CYCLE) / LUNAR_CYCLE;
+        
+        let label = phase < 0.03 || phase > 0.97 ? "FULL" : 
+                    phase < 0.25 ? "WANING GIBBOUS" :
+                    phase < 0.5 ? "LAST QUARTER" : 
+                    phase < 0.75 ? "WAXING CRESCENT" : "FIRST QUARTER";
+        
+        return { phase, label, percentage: Math.round(phase * 100) };
+    }
+
+    function drawLunarModule() {
+        const { phase, percentage } = getLunarPhase();
+        const moduleY = cy + 60; // Positioned below center
+
+        // 1. Draw Howling Wolf Silhouette (Vector Path)
+        ctx.save();
+        ctx.fillStyle = '#00ff00';
+        
+        // Vector coordinates for a stylized howling wolf
+        const wolfPath = new Path2D(
+            "M15,10 C18,5 22,2 25,0 C28,5 30,10 28,15 L25,20 L20,22 L15,20 Z"
+        );
+        
+        // Scale and position the wolf
+        ctx.translate(cx - 15, moduleY - 10);
+        ctx.scale(1.5, 1.5);
+        ctx.fill(wolfPath);
+        ctx.restore();
+
+        // 2. Draw Digital Green Percentage
+        ctx.fillStyle = '#00ff00';
+        ctx.font = '700 12px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${percentage}%`, cx, moduleY + 30);
+    }
+</script>
+</body>
+</html>
