@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>ROBOT ROOM // TACTICAL DEPLOYMENT</title>
+<style>
+  :root{
+    --cy: #35f5e0;
+    --cy-dim: #0f6e66;
+    --amber: #ffb545;
+    --red: #ff4d5e;
+    --bg: #05070a;
+    --panel: rgba(6,14,18,0.86);
+  }
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; padding:0; width:100%; height:100%; overflow:hidden;
+    background:var(--bg);
+    font-family:'Consolas','Courier New',monospace;
+    color:var(--cy);
+    -webkit-user-select:none; user-select:none;
+  }
+  canvas{ display:block; }
+
+  /* ---------- scanline / vignette overlay ---------- */
+  #overlay{
+    position:fixed; inset:0; pointer-events:none; z-index:50;
+    background:
+      radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.55) 100%);
+  }
+  #overlay::before{
+    content:""; position:absolute; inset:0;
+    background:repeating-linear-gradient(
+      to bottom, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px,
+      transparent 1px, transparent 3px);
+    mix-blend-mode:overlay;
+  }
+
+  /* ---------- selection screen ---------- */
+  #selectScreen{
+    position:fixed; inset:0; z-index:100;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:
+      radial-gradient(ellipse at 50% 20%, rgba(53,245,224,0.08), transparent 60%),
+      linear-gradient(180deg, #030405 0%, #060a0d 60%, #030405 100%);
+    padding:24px;
+  }
+  #selectScreen h1{
+    font-size:clamp(20px,4vw,34px);
+    letter-spacing:6px;
+    margin:0 0 4px 0;
+    color:var(--cy);
+    text-shadow:0 0 12px rgba(53,245,224,0.6);
+  }
+  #selectScreen .sub{
+    color:var(--cy-dim); letter-spacing:3px; font-size:12px; margin-bottom:28px;
+  }
+  #status{
+    letter-spacing:2px; font-size:12px; color:var(--amber); margin-bottom:18px; min-height:16px;
+  }
+  #nameRow{ margin-bottom:22px; display:flex; gap:10px; align-items:center; }
+  #nameRow label{ font-size:11px; letter-spacing:2px; color:var(--cy-dim); }
+  #nameInput{
+    background:rgba(53,245,224,0.06); border:1px solid var(--cy-dim); color:var(--cy);
+    padding:8px 12px; font-family:inherit; letter-spacing:2px; font-size:13px;
+    outline:none; width:200px;
+  }
+  #nameInput:focus{ border-color:var(--cy); box-shadow:0 0 8px rgba(53,245,224,0.3); }
+
+  #robotGrid{
+    display:grid; grid-template-columns:repeat(5,1fr); gap:14px;
+    max-width:980px; width:100%;
+  }
+  .robotCard{
+    position:relative; border:1px solid var(--cy-dim); background:var(--panel);
+    padding:14px 10px 12px; cursor:pointer; transition:all .15s ease;
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+    clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+  }
+  .robotCard:hover{ border-color:var(--cy); box-shadow:0 0 16px rgba(53,245,224,0.25); transform:translateY(-2px); }
+  .robotCard.taken{ opacity:0.32; cursor:not-allowed; filter:grayscale(0.6); }
+  .robotCard.taken:hover{ transform:none; box-shadow:none; border-color:var(--cy-dim); }
+  .robotCard.selected{ border-color:var(--amber); box-shadow:0 0 18px rgba(255,181,69,0.4); }
+  .swatch{
+    width:64px; height:64px; border-radius:4px;
+    display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 50% 30%, rgba(255,255,255,0.15), transparent 70%);
+  }
+  .robotCard .rname{ font-size:12px; letter-spacing:2px; }
+  .robotCard .rtag{ font-size:9px; letter-spacing:1px; color:var(--cy-dim); text-align:center; }
+  .robotCard .rstate{ font-size:9px; letter-spacing:1px; color:var(--red); height:11px; }
+
+  #enterBtn{
+    margin-top:28px; padding:12px 38px; font-family:inherit; letter-spacing:4px; font-size:13px;
+    background:transparent; color:var(--cy); border:1px solid var(--cy);
+    cursor:pointer; opacity:0.35; pointer-events:none; transition:all .15s ease;
+  }
+  #enterBtn.ready{ opacity:1; pointer-events:auto; }
+  #enterBtn.ready:hover{ background:var(--cy); color:#05070a; box-shadow:0 0 20px rgba(53,245,224,0.6); }
+
+  /* ---------- HUD ---------- */
+  #hud{
+    position:fixed; inset:0; pointer-events:none; z-index:40; display:none;
+  }
+  #hud.active{ display:block; }
+  .panel{
+    position:absolute; background:var(--panel); border:1px solid var(--cy-dim);
+    padding:10px 14px; font-size:11px; letter-spacing:1.5px;
+    clip-path: polygon(0 6px, 6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%);
+  }
+  #topLeft{ top:14px; left:14px; min-width:190px; }
+  #topLeft .row{ display:flex; justify-content:space-between; color:var(--cy-dim); margin-bottom:4px; }
+  #topLeft .row span:last-child{ color:var(--cy); }
+  #roster{ top:14px; right:14px; min-width:170px; }
+  #roster .rline{ display:flex; align-items:center; gap:6px; margin:3px 0; color:var(--cy); }
+  #roster .dot{ width:8px; height:8px; border-radius:2px; flex-shrink:0; }
+  #crosshair{
+    position:absolute; top:50%; left:50%; width:6px; height:6px;
+    transform:translate(-50%,-50%); border:1px solid var(--cy); border-radius:50%;
+    box-shadow:0 0 6px rgba(53,245,224,0.8);
+  }
+  #hintBar{
+    position:absolute; bottom:16px; left:50%; transform:translateX(-50%);
+    font-size:10px; letter-spacing:2px; color:var(--cy-dim); text-align:center;
+  }
+  #chatLog{
+    position:absolute; bottom:44px; left:14px; width:320px; max-height:140px;
+    overflow:hidden; font-size:11px; display:flex; flex-direction:column-reverse; gap:2px;
+  }
+  #chatLog div{ color:var(--cy); text-shadow:0 0 6px rgba(53,245,224,0.4); }
+  #chatLog span.who{ color:var(--amber); }
+  #chatInput{
+    position:absolute; bottom:14px; left:14px; width:320px; pointer-events:auto;
+    background:rgba(0,0,0,0.5); border:1px solid var(--cy-dim); color:var(--cy);
+    font-family:inherit; font-size:11px; letter-spacing:1px; padding:6px 8px; display:none;
+  }
+  #lockNotice{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    flex-direction:column; gap:10px; background:rgba(3,4,5,0.55); pointer-events:auto; cursor:pointer;
+  }
+  #lockNotice.hidden{ display:none; }
+  #lockNotice .big{ font-size:16px; letter-spacing:4px; color:var(--cy); text-shadow:0 0 10px rgba(53,245,224,0.6); }
+  #lockNotice .small{ font-size:11px; letter-spacing:2px; color:var(--cy-dim); }
+</style>
+</head>
+<body>
+
+<canvas id="scene"></canvas>
+<div id="overlay"></div>
+
+<!-- ============ SELECTION SCREEN ============ -->
+<div id="selectScreen">
+  <h1>ROBOT ROOM</h1>
+  <div class="sub">TACTICAL DEPLOYMENT TERMINAL &mdash; SELECT YOUR UNIT</div>
+  <div id="status">CONNECTING TO ROOM SERVER...</div>
+  <div id="nameRow">
+    <label for="nameInput">CALLSIGN</label>
+    <input id="nameInput" maxlength="16" placeholder="OPTIONAL" />
+  </div>
+  <div id="robotGrid"></div>
+  <button id="enterBtn">DEPLOY &raquo;</button>
+</div>
+
+<!-- ============ HUD ============ -->
+<div id="hud">
+  <div class="panel" id="topLeft">
+    <div class="row"><span>UNIT</span><span id="hudName">--</span></div>
+    <div class="row"><span>CHASSIS</span><span id="hudRobot">--</span></div>
+    <div class="row"><span>ROOM</span><span id="hudCount">-- / 5</span></div>
+  </div>
+  <div class="panel" id="roster"></div>
+  <div id="crosshair"></div>
+  <div id="chatLog"></div>
+  <input id="chatInput" maxlength="140" placeholder="ENTER MESSAGE, PRESS RETURN" />
+  <div id="hintBar">WASD MOVE &nbsp;·&nbsp; MOUSE LOOK &nbsp;·&nbsp; ENTER CHAT &nbsp;·&nbsp; ESC RELEASE CURSOR</div>
+  <div id="lockNotice"><div class="big">CLICK TO ENGAGE</div><div class="small">pointer lock required for movement</div></div>
+</div>
+
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  /* ================= ROBOT DEFINITIONS ================= */
+  const ROBOTS = {
+    sentinel:   { label:"SENTINEL",   tag:"Recon / Balanced",  color:0x35f5e0, accent:0x9df9ee, height:1.0 },
+    vanguard:   { label:"VANGUARD",   tag:"Heavy / Shoulder Cannons", color:0xffb545, accent:0xffd9a0, height:1.15 },
+    specter:    { label:"SPECTER",    tag:"Scout / Slim Frame", color:0xb45cff, accent:0xdcb8ff, height:0.9 },
+    juggernaut: { label:"JUGGERNAUT", tag:"Tank / Treads",      color:0xff4d5e, accent:0xff9aa4, height:1.2 },
+    wraith:     { label:"WRAITH",     tag:"Stealth / Tall",     color:0x4dff8a, accent:0xa8ffce, height:1.3 },
+  };
+  const ROBOT_ORDER = ['sentinel','vanguard','specter','juggernaut','wraith'];
+
+  /* ================= UI: build robot grid ================= */
+  const grid = document.getElementById('robotGrid');
+  const cards = {};
+  ROBOT_ORDER.forEach(key=>{
+    const def = ROBOTS[key];
+    const card = document.createElement('div');
+    card.className = 'robotCard';
+    card.innerHTML = `
+      <div class="swatch" style="background-color:${'#'+def.color.toString(16).padStart(6,'0')}22;">
+        <svg width="40" height="40" viewBox="0 0 40 40">
+          <rect x="10" y="8" width="20" height="16" rx="2" fill="#${def.color.toString(16).padStart(6,'0')}" opacity="0.85"/>
+          <circle cx="20" cy="16" r="3" fill="#${def.accent.toString(16).padStart(6,'0')}"/>
+          <rect x="6" y="26" width="6" height="10" fill="#${def.color.toString(16).padStart(6,'0')}" opacity="0.6"/>
+          <rect x="28" y="26" width="6" height="10" fill="#${def.color.toString(16).padStart(6,'0')}" opacity="0.6"/>
+        </svg>
+      </div>
+      <div class="rname">${def.label}</div>
+      <div class="rtag">${def.tag}</div>
+      <div class="rstate"></div>
+    `;
+    card.addEventListener('click', ()=> trySelect(key));
+    grid.appendChild(card);
+    cards[key] = card;
+  });
+
+  const statusEl = document.getElementById('status');
+  const enterBtn = document.getElementById('enterBtn');
+  const nameInput = document.getElementById('nameInput');
+  const selectScreen = document.getElementById('selectScreen');
+  const hud = document.getElementById('hud');
+
+  let mySelection = null;
+  let myId = null;
+  let myName = null;
+  let confirmed = false;
+  const takenRobots = new Set();
+
+  function refreshCardStates(){
+    ROBOT_ORDER.forEach(key=>{
+      const card = cards[key];
+      const stateEl = card.querySelector('.rstate');
+      card.classList.toggle('taken', takenRobots.has(key) && key !== mySelection);
+      card.classList.toggle('selected', key === mySelection);
+      stateEl.textContent = (takenRobots.has(key) && key !== mySelection) ? 'TAKEN' : '';
+    });
+    enterBtn.classList.toggle('ready', !!mySelection && !confirmed);
+  }
+
+  function trySelect(key){
+    if (confirmed) return;
+    if (takenRobots.has(key) && key !== mySelection) return;
+    mySelection = key;
+    refreshCardStates();
+  }
+
+  enterBtn.addEventListener('click', ()=>{
+    if (!mySelection || confirmed) return;
+    confirmed = true;
+    myName = nameInput.value.trim().slice(0,16) || null;
+    send({ type:'select', robotType: mySelection, name: myName });
+    statusEl.textContent = 'DEPLOYING...';
+  });
+
+  /* ================= WEBSOCKET ================= */
+  const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
+  const ws = new WebSocket(proto + location.host);
+  const remotePlayers = {}; // id -> { def, group, name, targetPos, targetRy }
+  let maxPlayers = 5;
+
+  function send(obj){
+    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+  }
+
+  ws.addEventListener('open', ()=>{
+    statusEl.textContent = 'CONNECTED &mdash; CHOOSE A CHASSIS';
+  });
+
+  ws.addEventListener('close', ()=>{
+    statusEl.textContent = 'CONNECTION LOST';
+  });
+
+  ws.addEventListener('message', (ev)=>{
+    const msg = JSON.parse(ev.data);
+
+    if (msg.type === 'full'){
+      statusEl.textContent = 'ROOM FULL (5/5) &mdash; TRY AGAIN LATER';
+      enterBtn.classList.remove('ready');
+      return;
+    }
+
+    if (msg.type === 'welcome'){
+      myId = msg.id;
+      maxPlayers = msg.maxPlayers || 5;
+      msg.takenRobots.forEach(r => takenRobots.add(r));
+      msg.players.forEach(p=>{
+        if (p.id !== myId && p.robotType) spawnRemote(p);
+      });
+      refreshCardStates();
+      updateCount();
+      updateRoster();
+    }
+
+    if (msg.type === 'playerJoined'){
+      updateCount();
+    }
+
+    if (msg.type === 'playerSelected'){
+      takenRobots.add(msg.robotType);
+      refreshCardStates();
+      if (msg.id !== myId){
+        spawnRemote({ id: msg.id, robotType: msg.robotType, name: msg.name, x:0, y:0, z:0, ry:0 });
+      }
+      updateRoster();
+    }
+
+    if (msg.type === 'selectConfirmed'){
+      enterGame(msg.robotType, msg.name);
+    }
+
+    if (msg.type === 'selectRejected'){
+      confirmed = false;
+      takenRobots.add(msg.robotType);
+      mySelection = null;
+      refreshCardStates();
+      statusEl.textContent = 'CHASSIS TAKEN &mdash; PICK ANOTHER';
+    }
+
+    if (msg.type === 'playerMoved'){
+      const rp = remotePlayers[msg.id];
+      if (rp){
+        rp.targetPos.set(msg.x, msg.y, msg.z);
+        rp.targetRy = msg.ry;
+      }
+    }
+
+    if (msg.type === 'playerLeft'){
+      removeRemote(msg.id);
+      updateCount();
+      updateRoster();
+    }
+
+    if (msg.type === 'chat'){
+      addChatLine(msg.name, msg.text);
+    }
+  });
+
+  function updateCount(){
+    const n = Object.keys(remotePlayers).length + (confirmed ? 1 : 0);
+    document.getElementById('hudCount').textContent = `${n} / ${maxPlayers}`;
+  }
+
+  function updateRoster(){
+    const rosterEl = document.getElementById('roster');
+    let html = '<div style="color:var(--cy-dim);margin-bottom:4px;">ROSTER</div>';
+    if (confirmed){
+      const def = ROBOTS[mySelection];
+      html += `<div class="rline"><span class="dot" style="background:#${def.color.toString(16).padStart(6,'0')}"></span>${(myName||'YOU')} (${def.label})</div>`;
+    }
+    Object.values(remotePlayers).forEach(rp=>{
+      html += `<div class="rline"><span class="dot" style="background:#${rp.def.color.toString(16).padStart(6,'0')}"></span>${rp.name} (${rp.def.label})</div>`;
+    });
+    rosterEl.innerHTML = html;
+  }
+
+  function addChatLine(name, text){
+    const log = document.getElementById('chatLog');
+    const line = document.createElement('div');
+    line.innerHTML = `<span class="who">${name}:</span> ${escapeHtml(text)}`;
+    log.prepend(line);
+    while (log.children.length > 8) log.removeChild(log.lastChild);
+  }
+  function escapeHtml(s){
+    return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  /* ================= THREE.JS SCENE ================= */
+  const canvas = document.getElementById('scene');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x02050a, 0.028);
+  scene.background = new THREE.Color(0x02050a);
+
+  const camera = new THREE.PerspectiveCamera(65, window.innerWidth/window.innerHeight, 0.1, 200);
+  camera.position.set(0, 6, 12);
+
+  window.addEventListener('resize', ()=>{
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  /* ---- lighting ---- */
+  scene.add(new THREE.AmbientLight(0x1a3540, 1.1));
+  const hemi = new THREE.HemisphereLight(0x224455, 0x02050a, 0.6);
+  scene.add(hemi);
+
+  const key1 = new THREE.PointLight(0x35f5e0, 6, 30, 2);
+  key1.position.set(-8, 6, -6);
+  scene.add(key1);
+  const key2 = new THREE.PointLight(0xb45cff, 5, 30, 2);
+  key2.position.set(8, 6, 6);
+  scene.add(key2);
+  const spot = new THREE.SpotLight(0xffffff, 3, 40, Math.PI/6, 0.4, 1.5);
+  spot.position.set(0, 16, 0);
+  spot.castShadow = true;
+  scene.add(spot);
+  scene.add(spot.target);
+
+  /* ---- room ---- */
+  const ROOM = 22; // half-extent, walkable is smaller due to wall thickness
+  const floorMat = new THREE.MeshStandardMaterial({ color:0x060a0d, roughness:0.55, metalness:0.4 });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM*2, ROOM*2), floorMat);
+  floor.rotation.x = -Math.PI/2;
+  floor.receiveShadow = true;
+  scene.add(floor);
+
+  const floorGrid = new THREE.GridHelper(ROOM*2, 44, 0x35f5e0, 0x0c2b2a);
+  floorGrid.position.y = 0.01;
+  floorGrid.material.opacity = 0.35;
+  floorGrid.material.transparent = true;
+  scene.add(floorGrid);
+
+  const wallMat = new THREE.MeshStandardMaterial({ color:0x0a1116, roughness:0.7, metalness:0.3 });
+  const wallH = 8;
+  function makeWall(w,h,d,x,y,z){
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), wallMat);
+    m.position.set(x,y,z);
+    m.receiveShadow = true;
+    scene.add(m);
+    return m;
+  }
+  makeWall(ROOM*2, wallH, 0.5, 0, wallH/2, -ROOM);
+  makeWall(ROOM*2, wallH, 0.5, 0, wallH/2, ROOM);
+  makeWall(0.5, wallH, ROOM*2, -ROOM, wallH/2, 0);
+  makeWall(0.5, wallH, ROOM*2, ROOM, wallH/2, 0);
+
+  // neon trim along wall base
+  const trimMat = new THREE.MeshBasicMaterial({ color:0x35f5e0 });
+  [[-ROOM,0.05,0,0.4,wallH,ROOM*2],[ROOM,0.05,0,0.4,wallH,ROOM*2]].forEach(()=>{});
+  function neonStrip(x,z,len,horiz){
+    const geo = horiz ? new THREE.BoxGeometry(len,0.06,0.06) : new THREE.BoxGeometry(0.06,0.06,len);
+    const strip = new THREE.Mesh(geo, trimMat);
+    strip.position.set(x, 0.05, z);
+    scene.add(strip);
+  }
+  neonStrip(0,-ROOM+0.3, ROOM*2, true);
+  neonStrip(0, ROOM-0.3, ROOM*2, true);
+  neonStrip(-ROOM+0.3, 0, ROOM*2, false);
+  neonStrip(ROOM-0.3, 0, ROOM*2, false);
+
+  // pillars + crates for a lab feel
+  const pillarMat = new THREE.MeshStandardMaterial({ color:0x111a1f, roughness:0.5, metalness:0.6 });
+  const pillarPositions = [[-14,-14],[14,-14],[-14,14],[14,14],[-14,0],[14,0],[0,-14],[0,14]];
+  pillarPositions.forEach(([x,z])=>{
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.7,wallH,8), pillarMat);
+    p.position.set(x, wallH/2, z);
+    p.castShadow = true; p.receiveShadow = true;
+    scene.add(p);
+    const cap = new THREE.PointLight(0x35f5e0, 1.4, 6);
+    cap.position.set(x, wallH-0.3, z);
+    scene.add(cap);
+  });
+
+  const crateMat = new THREE.MeshStandardMaterial({ color:0x1a2228, roughness:0.8 });
+  for (let i=0;i<6;i++){
+    const s = 1 + Math.random()*0.6;
+    const c = new THREE.Mesh(new THREE.BoxGeometry(s,s,s), crateMat);
+    const cx = (Math.random()-0.5)*ROOM*1.3;
+    const cz = (Math.random()-0.5)*ROOM*1.3;
+    c.position.set(cx, s/2, cz);
+    c.rotation.y = Math.random()*Math.PI;
+    c.castShadow = true; c.receiveShadow = true;
+    scene.add(c);
+  }
+
+  /* ---- robot model builder ---- */
+  function buildRobot(def){
+    const g = new THREE.Group();
+    const bodyMat = new THREE.MeshStandardMaterial({ color:def.color, roughness:0.35, metalness:0.7 });
+    const accentMat = new THREE.MeshStandardMaterial({ color:def.accent, emissive:def.accent, emissiveIntensity:1.4, roughness:0.3 });
+    const darkMat = new THREE.MeshStandardMaterial({ color:0x0d1418, roughness:0.6, metalness:0.5 });
+
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.7,0.85*def.height,0.42), bodyMat);
+    torso.position.y = 1.05*def.height;
+    torso.castShadow = true;
+    g.add(torso);
+
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.09,12,12), accentMat);
+    core.position.set(0, 1.05*def.height, 0.22);
+    g.add(core);
+
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.36,0.32,0.36), darkMat);
+    head.position.y = 1.62*def.height;
+    head.castShadow = true;
+    g.add(head);
+
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.3,0.07,0.02), accentMat);
+    visor.position.set(0, 1.62*def.height, 0.19);
+    g.add(visor);
+
+    [-1,1].forEach(side=>{
+      const shoulder = new THREE.Mesh(new THREE.BoxGeometry(0.22,0.22,0.22), bodyMat);
+      shoulder.position.set(side*0.46, 1.35*def.height, 0);
+      g.add(shoulder);
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.55,8), darkMat);
+      arm.position.set(side*0.46, 0.95*def.height, 0);
+      arm.castShadow = true;
+      g.add(arm);
+    });
+
+    if (def === ROBOTS.juggernaut){
+      const tread = new THREE.Mesh(new THREE.BoxGeometry(0.9,0.32,1.1), darkMat);
+      tread.position.y = 0.16;
+      tread.castShadow = true;
+      g.add(tread);
+    } else {
+      [-1,1].forEach(side=>{
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.62*def.height,8), darkMat);
+        leg.position.set(side*0.18, 0.31*def.height, 0);
+        leg.castShadow = true;
+        g.add(leg);
+      });
+    }
+
+    const light = new THREE.PointLight(def.accent, 0.8, 3);
+    light.position.set(0, 1.05*def.height, 0);
+    g.add(light);
+
+    return g;
+  }
+
+  function makeNameSprite(text, colorHex){
+    const cvs = document.createElement('canvas');
+    cvs.width = 256; cvs.height = 64;
+    const ctx = cvs.getContext('2d');
+    ctx.font = '28px Consolas, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#' + colorHex.toString(16).padStart(6,'0');
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 8;
+    ctx.fillText(text, 128, 40);
+    const tex = new THREE.CanvasTexture(cvs);
+    const mat = new THREE.SpriteMaterial({ map:tex, transparent:true, depthWrite:false });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(2, 0.5, 1);
+    return sprite;
+  }
+
+  /* ---- local player rig (camera-attached) ---- */
+  let myRobotGroup = null;
+  const player = {
+    pos: new THREE.Vector3(0, 0, 8),
+    yaw: 0,
+    pitch: 0,
+    velocity: new THREE.Vector3(),
+  };
+
+  function enterGame(robotType, name){
+    mySelection = robotType;
+    myName = name || `UNIT-${myId}`;
+    selectScreen.style.display = 'none';
+    hud.classList.add('active');
+    document.getElementById('hudName').textContent = myName;
+    document.getElementById('hudRobot').textContent = ROBOTS[robotType].label;
+    myRobotGroup = buildRobot(ROBOTS[robotType]);
+    myRobotGroup.visible = false; // first person: hide own body (avoid clipping)
+    scene.add(myRobotGroup);
+    updateCount();
+    updateRoster();
+    animate();
+  }
+
+  function spawnRemote(p){
+    if (remotePlayers[p.id]) return;
+    const def = ROBOTS[p.robotType];
+    if (!def) return;
+    const group = buildRobot(def);
+    group.position.set(p.x||0, 0, p.z||0);
+    const label = makeNameSprite(p.name || `UNIT-${p.id}`, def.accent);
+    label.position.set(0, 2.1*def.height, 0);
+    group.add(label);
+    scene.add(group);
+    remotePlayers[p.id] = {
+      def, group, name: p.name || `UNIT-${p.id}`,
+      targetPos: new THREE.Vector3(p.x||0,0,p.z||0),
+      targetRy: p.ry||0,
+    };
+  }
+
+  function removeRemote(id){
+    const rp = remotePlayers[id];
+    if (!rp) return;
+    scene.remove(rp.group);
+    delete remotePlayers[id];
+  }
+
+  /* ---- pointer lock + input ---- */
+  const keys = {};
+  let pointerLocked = false;
+  const lockNotice = document.getElementById('lockNotice');
+  const chatInput = document.getElementById('chatInput');
+  let chatOpen = false;
+
+  lockNotice.addEventListener('click', ()=>{
+    if (!confirmed) return;
+    canvas.requestPointerLock();
+  });
+
+  document.addEventListener('pointerlockchange', ()=>{
+    pointerLocked = document.pointerLockElement === canvas;
+    lockNotice.classList.toggle('hidden', pointerLocked);
+  });
+
+  document.addEventListener('mousemove', (e)=>{
+    if (!pointerLocked) return;
+    player.yaw -= e.movementX * 0.0022;
+    player.pitch -= e.movementY * 0.0022;
+    player.pitch = Math.max(-1.1, Math.min(1.1, player.pitch));
+  });
+
+  window.addEventListener('keydown', (e)=>{
+    if (chatOpen){
+      if (e.key === 'Enter'){
+        const text = chatInput.value.trim();
+        if (text) send({ type:'chat', text });
+        chatInput.value = '';
+        chatInput.style.display = 'none';
+        chatOpen = false;
+        if (confirmed) canvas.requestPointerLock();
+      } else if (e.key === 'Escape'){
+        chatInput.style.display = 'none';
+        chatOpen = false;
+      }
+      return;
+    }
+    if (e.key === 'Enter' && confirmed){
+      chatInput.style.display = 'block';
+      chatInput.focus();
+      chatOpen = true;
+      document.exitPointerLock();
+      return;
+    }
+    keys[e.code] = true;
+  });
+  window.addEventListener('keyup', (e)=>{ keys[e.code] = false; });
+
+  /* ---- movement + network send loop ---- */
+  const MOVE_SPEED = 5.2;
+  const clock = new THREE.Clock();
+  let lastSent = 0;
+
+  function updateMovement(dt){
+    if (!confirmed) return;
+    const forward = new THREE.Vector3(Math.sin(player.yaw), 0, Math.cos(player.yaw));
+    const right = new THREE.Vector3(Math.sin(player.yaw+Math.PI/2), 0, Math.cos(player.yaw+Math.PI/2));
+    const move = new THREE.Vector3();
+    if (keys['KeyW'] || keys['ArrowUp']) move.add(forward);
+    if (keys['KeyS'] || keys['ArrowDown']) move.sub(forward);
+    if (keys['KeyD'] || keys['ArrowRight']) move.add(right);
+    if (keys['KeyA'] || keys['ArrowLeft']) move.sub(right);
+    if (move.lengthSq() > 0){
+      move.normalize().multiplyScalar(MOVE_SPEED*dt);
+      player.pos.add(move);
+    }
+    const bound = 21;
+    player.pos.x = Math.max(-bound, Math.min(bound, player.pos.x));
+    player.pos.z = Math.max(-bound, Math.min(bound, player.pos.z));
+
+    if (myRobotGroup){
+      myRobotGroup.position.set(player.pos.x, 0, player.pos.z);
+      myRobotGroup.rotation.y = player.yaw + Math.PI;
+    }
+
+    // third-person camera: behind + above, looking toward pitch/yaw
+    const camDist = 5.2, camHeight = 2.6;
+    const camOffset = new THREE.Vector3(
+      -Math.sin(player.yaw) * camDist,
+      camHeight + player.pitch*2,
+      -Math.cos(player.yaw) * camDist
+    );
+    const desiredCamPos = player.pos.clone().add(camOffset).add(new THREE.Vector3(0,1.2,0));
+    camera.position.lerp(desiredCamPos, 1 - Math.pow(0.001, dt));
+    const lookTarget = player.pos.clone().add(new THREE.Vector3(0, 1.4 + player.pitch*3, 0));
+    camera.lookAt(lookTarget);
+
+    spot.target.position.set(player.pos.x, 0, player.pos.z);
+
+    const now = performance.now();
+    if (now - lastSent > 60){
+      lastSent = now;
+      send({ type:'move', x: player.pos.x, y: 0, z: player.pos.z, ry: player.yaw });
+    }
+  }
+
+  function updateRemotes(dt){
+    const t = 1 - Math.pow(0.0001, dt);
+    Object.values(remotePlayers).forEach(rp=>{
+      rp.group.position.lerp(new THREE.Vector3(rp.targetPos.x,0,rp.targetPos.z), t);
+      let dy = rp.targetRy + Math.PI - rp.group.rotation.y;
+      dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+      rp.group.rotation.y += dy * t;
+    });
+  }
+
+  function animate(){
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.05);
+    updateMovement(dt);
+    updateRemotes(dt);
+    renderer.render(scene, camera);
+  }
+
+  // idle render loop before game starts (so room is visible behind selection screen)
+  function idleRender(){
+    if (confirmed) return;
+    camera.position.x = Math.sin(Date.now()*0.00008)*16;
+    camera.position.z = Math.cos(Date.now()*0.00008)*16;
+    camera.position.y = 6;
+    camera.lookAt(0,2,0);
+    renderer.render(scene, camera);
+    requestAnimationFrame(idleRender);
+  }
+  idleRender();
+
+})();
+</script>
+</body>
+</html>
