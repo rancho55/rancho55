@@ -1,8 +1,13 @@
 {
-  "name": "chess-demo",
+  "name": "robot-team-online",
   "version": "1.0.0",
-  "main": "server.js",
+  "description": "Four robot multiplayer HTML game prototype",
+  "main": "serverrobot.js",
+  "scripts": {
+    "start": "node serverrobot.js"
+  },
   "dependencies": {
-    "ws": "^8.0.0"
+    "express": "^5.1.0",
+    "socket.io": "^4.8.1"
   }
 }
