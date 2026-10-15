@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sacred Abstraction | Art Portfolio</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0a0a0c',
+                        cardBg: '#121216',
+                        accentGold: '#d4af37',
+                        accentMuted: '#8c8275'
+                    },
+                    fontFamily: {
+                        serif: ['Playfair Display', 'serif'],
+                        sans: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #0a0a0c;
+            color: #e5e7eb;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+        .serif-title {
+            font-family: 'Playfair Display', serif;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0a0c;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #27272a;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3f3f46;
+        }
+        .gallery-item {
+            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease;
+        }
+        .gallery-item:hover img {
+            transform: scale(1.03);
+        }
+        /* Fade in animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-accentGold selection:text-black">
+
+    <!-- Top Navigation -->
+    <header class="sticky top-0 z-40 backdrop-blur-md bg-darkBg/80 border-b border-zinc-800/60 transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <a href="#" class="group flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-full border border-accentGold/40 flex items-center justify-center text-accentGold group-hover:bg-accentGold/10 transition-colors">
+                    <i class="fa-solid fa-infinity text-sm"></i>
+                </div>
+                <div>
+                    <span class="serif-title text-xl tracking-wide font-medium text-zinc-100">LUMEN & ABSTRACTION</span>
+                    <span class="block text-[10px] tracking-widest text-accentMuted uppercase">Sacred Art · Past & Present</span>
+                </div>
+            </a>
+
+            <nav class="hidden md:flex items-center space-x-8 text-sm font-light text-zinc-400">
+                <a href="#gallery" class="hover:text-accentGold transition-colors">Works</a>
+                <a href="#statement" class="hover:text-accentGold transition-colors">Artist Statement</a>
+                <a href="#contact" class="hover:text-accentGold transition-colors">Inquiries</a>
+            </nav>
+
+            <div class="flex items-center space-x-4">
+                <button onclick="openGallery(0)" class="px-4 py-2 text-xs uppercase tracking-widest border border-zinc-700 hover:border-accentGold text-zinc-200 hover:text-accentGold rounded-full transition-all duration-300">
+                    Enter Gallery
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="relative pt-24 pb-16 px-6 max-w-7xl mx-auto flex flex-col items-center text-center">
+        <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs text-accentMuted mb-6 animate-fade-in">
+            <span class="w-1.5 h-1.5 rounded-full bg-accentGold animate-pulse"></span>
+            <span>Exhibition 2026: The Eternal Echo</span>
+        </div>
+        
+        <h1 class="serif-title text-4xl sm:text-6xl md:text-7xl font-light text-zinc-100 max-w-4xl tracking-tight leading-[1.1] mb-8 animate-fade-in" style="animation-delay: 0.1s;">
+            Bridging the Ancient Word with <span class="italic text-accentGold">Modern Abstraction</span>
+        </h1>
+        
+        <p class="text-base sm:text-lg text-zinc-400 max-w-2xl font-light leading-relaxed mb-12 animate-fade-in" style="animation-delay: 0.2s;">
+            An exploration of divine presence across time. Raw textures, minimal geometry, and depth capturing the timeless essence of Christ through contemporary abstract vision.
+        </p>
+
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto animate-fade-in" style="animation-delay: 0.3s;">
+            <a href="#gallery" class="w-full sm:w-auto px-8 py-3.5 bg-zinc-100 text-zinc-900 hover:bg-accentGold hover:text-black font-medium text-sm rounded-full transition-all duration-300 shadow-lg shadow-white/5">
+                Explore 10 Curated Works
+            </a>
+            <a href="#statement" class="w-full sm:w-auto px-8 py-3.5 border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-600 font-medium text-sm rounded-full transition-all duration-300">
+                Read Artist Statement
+            </a>
+        </div>
+    </section>
+
+    <!-- Main Gallery Section -->
+    <section id="gallery" class="py-20 px-6 max-w-7xl mx-auto w-full">
+        <div class="flex flex-col md:flex-row md:items-end justify-between mb-12 border-b border-zinc-800/80 pb-6">
+            <div>
+                <span class="text-xs uppercase tracking-widest text-accentGold font-mono">Curated Portfolio</span>
+                <h2 class="serif-title text-3xl sm:text-4xl text-zinc-100 mt-1">The Complete Collection</h2>
+            </div>
+            <p class="text-sm text-zinc-400 mt-4 md:mt-0 font-light">
+                Showing 10 masterworks. Click any piece to launch full-screen immersive viewer.
+            </p>
+        </div>
+
+        <!-- Gallery Grid -->
+        <div id="gallery-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- Dynamically populated via JS for clean code management -->
+        </div>
+    </section>
+
+    <!-- Artist Statement Section -->
+    <section id="statement" class="py-24 bg-cardBg border-y border-zinc-800/60 px-6 relative overflow-hidden">
+        <div class="absolute -right-20 -bottom-20 w-96 h-96 rounded-full bg-accentGold/5 blur-3xl pointer-events-none"></div>
+        <div class="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-12 items-center">
+            <div class="md:col-span-5">
+                <div class="relative aspect-[4/5] rounded-2xl overflow-hidden border border-zinc-800 shadow-2xl">
+                    <img src="https://raw.githubusercontent.com/rancho55/rancho55/main/IMG_6322.jpeg" alt="Artist at work" class="w-full h-full object-cover">
+                    <div class="absolute inset-0 bg-gradient-to-t from-darkBg/90 via-transparent to-transparent flex items-end p-6">
+                        <div>
+                            <span class="serif-title text-lg text-zinc-100 block">Elias Thorne aka Stephen Forrest</span>
+                            <span class="text-xs text-accentGold font-mono">Contemporary Sacred Painter</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="md:col-span-7 space-y-6">
+                <span class="text-xs uppercase tracking-widest text-accentGold font-mono">Artist Statement</span>
+                <h2 class="serif-title text-3xl sm:text-4xl text-zinc-100 leading-tight">
+                    "Faith is not confined to history; it is a living geometry."
+                </h2>
+                <div class="space-y-4 text-zinc-400 font-light leading-relaxed text-sm sm:text-base">
+                    <p>
+                        My work investigates the intersection of ancient theological symbols and contemporary abstract expressionism. By stripping away figurative clutter, I seek to reveal the raw, elemental gravity of Christ's narrative—the tension between suffering and transcendence, the past agony and the present grace.
+                    </p>
+                    <p>
+                        Using heavy textures, liturgical gold leaf, and muted earth tones juxtaposed with modern digital resonance, each piece serves as a silent sanctuary for meditation in an overly noisy world.
+                    </p>
+                </div>
+                <div class="pt-4 flex items-center space-x-6 text-zinc-300 font-mono text-xs">
+                    <div><span class="text-accentGold font-bold">10+</span> Exhibitions</div>
+                    <div class="w-1 h-1 rounded-full bg-zinc-700"></div>
+                    <div><span class="text-accentGold font-bold">Global</span> Collections</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact / Inquiry Section -->
+    <section id="contact" class="py-24 px-6 max-w-3xl mx-auto text-center">
+        <span class="text-xs uppercase tracking-widest text-accentGold font-mono">Acquisitions & Inquiries</span>
+        <h2 class="serif-title text-3xl sm:text-4xl text-zinc-100 mt-2 mb-4">Inquire About Available Works</h2>
+        <p class="text-zinc-400 font-light text-sm sm:text-base mb-10 max-w-xl mx-auto">
+            Original canvases, museum-grade archival prints, and custom commission availability upon request.
+        </p>
+
+        <form onsubmit="handleFormSubmit(event)" class="space-y-4 text-left bg-cardBg p-8 rounded-2xl border border-zinc-800/80 shadow-xl">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-zinc-400 mb-2">Your Name</label>
+                    <input type="text" required class="w-full bg-darkBg border border-zinc-800 rounded-lg px-4 py-3 text-zinc-100 text-sm focus:outline-none focus:border-accentGold transition-colors" placeholder="Jane Doe">
+                </div>
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-zinc-400 mb-2">Email Address</label>
+                    <input type="email" required class="w-full bg-darkBg border border-zinc-800 rounded-lg px-4 py-3 text-zinc-100 text-sm focus:outline-none focus:border-accentGold transition-colors" placeholder="jane@example.com">
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs uppercase tracking-wider text-zinc-400 mb-2">Piece of Interest / Message</label>
+                <textarea rows="4" required class="w-full bg-darkBg border border-zinc-800 rounded-lg px-4 py-3 text-zinc-100 text-sm focus:outline-none focus:border-accentGold transition-colors resize-none" placeholder="I am inquiring about Artwork #..."></textarea>
+            </div>
+            <button type="submit" class="w-full py-4 bg-accentGold text-black font-semibold text-xs uppercase tracking-widest rounded-lg hover:bg-amber-400 transition-colors shadow-lg shadow-accentGold/10">
+                Send Inquiry
+            </button>
+        </form>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-zinc-800/60 py-12 px-6 text-center text-xs text-zinc-500">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div class="serif-title text-zinc-300 text-base">LUMEN & ABSTRACTION</div>
+            <div class="flex space-x-6">
+                <a href="#" class="hover:text-accentGold transition-colors"><i class="fa-brands fa-instagram text-base"></i></a>
+                <a href="#" class="hover:text-accentGold transition-colors"><i class="fa-brands fa-twitter text-base"></i></a>
+                <a href="#" class="hover:text-accentGold transition-colors"><i class="fa-brands fa-behance text-base"></i></a>
+            </div>
+            <div>&copy; 2026 Elias Thorne aka Stephen Forrest. All Rights Reserved.</div>
+        </div>
+    </footer>
+
+    <!-- Fullscreen Immersive Gallery Viewer Modal -->
+    <div id="lightbox" class="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl hidden flex-col opacity-0 transition-opacity duration-300">
+        <!-- Top Bar -->
+        <div class="flex items-center justify-between px-6 py-4 border-b border-zinc-800/40">
+            <div class="flex items-center space-x-3">
+                <span id="lightbox-counter" class="font-mono text-xs text-accentGold tracking-widest">01 / 10</span>
+                <span class="text-zinc-600">|</span>
+                <span id="lightbox-title" class="serif-title text-sm sm:text-base text-zinc-200">Artwork Title</span>
+            </div>
+            <button onclick="closeGallery()" class="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Main Viewer Stage -->
+        <div class="flex-1 relative flex items-center justify-center p-4 sm:p-12 overflow-hidden">
+            <!-- Prev Button -->
+            <button onclick="prevImage()" class="absolute left-4 sm:left-8 z-20 w-12 h-12 rounded-full bg-zinc-900/80 border border-zinc-800 text-zinc-300 hover:text-accentGold hover:border-accentGold flex items-center justify-center backdrop-blur-md transition-all">
+                <i class="fa-solid fa-chevron-left text-lg"></i>
+            </button>
+
+            <!-- Image Container -->
+            <div class="max-w-5xl max-h-[70vh] flex flex-col items-center justify-center">
+                <img id="lightbox-img" src="" alt="Artwork" class="max-h-[60vh] max-w-full object-contain rounded-lg shadow-2xl transition-transform duration-300">
+                <p id="lightbox-desc" class="mt-4 text-xs sm:text-sm text-zinc-400 font-light text-center max-w-xl"></p>
+            </div>
+
+            <!-- Next Button -->
+            <button onclick="nextImage()" class="absolute right-4 sm:right-8 z-20 w-12 h-12 rounded-full bg-zinc-900/80 border border-zinc-800 text-zinc-300 hover:text-accentGold hover:border-accentGold flex items-center justify-center backdrop-blur-md transition-all">
+                <i class="fa-solid fa-chevron-right text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Bottom Thumbnail Drawer / Bar -->
+        <div class="py-4 px-6 border-t border-zinc-800/40 bg-darkBg/90 overflow-x-auto">
+            <div id="lightbox-thumbs" class="flex items-center justify-center space-x-3 min-w-max mx-auto">
+                <!-- Thumbs injected via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Notification Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 bg-cardBg border border-zinc-700 text-zinc-100 px-6 py-4 rounded-xl shadow-2xl transform translate-y-24 opacity-0 transition-all duration-300 flex items-center space-x-3">
+        <div class="w-8 h-8 rounded-full bg-accentGold/20 text-accentGold flex items-center justify-center">
+            <i class="fa-solid fa-check text-sm"></i>
+        </div>
+        <div>
+            <span class="block font-medium text-sm">Inquiry Received</span>
+            <span id="toast-msg" class="text-xs text-zinc-400">Thank you. We will respond shortly.</span>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Data for the 10 Abstract Jesus Art pieces bridging past and present
+        const artworks = [
+            {
+                id: 1,
+                title: "Crown of Thorns (Minimalist Study)",
+                era: "Present",
+                year: "2026",
+                image: "https://raw.githubusercontent.com/rancho55/rancho55/main/IMG_5594.jpeg",
+                description: "A stark geometrical reduction of suffering and majesty. Heavy impasto textures paired with stark metallic lines."
+            },
+            {
+                id: 2,
+                title: "The Shroud Echo",
+                era: "Past & Present",
+                year: "2025",
+                image: "https://raw.githubusercontent.com/rancho55/rancho55/main/IMG_7704.jpeg",
+                description: "Evoking the ancient burial linen through monochrome gradients and subtle spectral staining."
+            },
+            {
+                id: 3,
+                title: "Light of the Galilean Horizon",
+                era: "Present",
+                year: "2026",
+                image: "https://raw.githubusercontent.com/rancho55/rancho55/main/IMG_7724.jpeg",
+                description: "Vibrant golden hues representing the dawn of grace piercing through deep indigo shadow fields."
+            },
+            {
+                id: 4,
+                title: "Via Dolorosa Abstraction",
+                era: "Past",
+                year: "2024",
+                image: "https://raw.githubusercontent.com/rancho55/rancho55/main/IMG_7738.jpeg",
+                description: "Vertical strokes of crimson and slate symbolizing the heavy ascent and ultimate sacrifice."
+            },
+            {
+                id: 5,
+                title: "Bread and Stone",
+                era: "Present",
+                year: "2026",
+                image: "https://raw.githubusercontent.com/rancho55/rancho55/main/IMG_7746.jpeg",
+                description: "Eucharistic symbolism explored through rugged earthen textures and luminous gold leaf."
+            },
+            {
+                id: 6,
+                title: "The Good Shepherd's Contour",
+                era: "Present",
+                year: "2026",
+                image: "https://raw.githubusercontent.com/rancho55/rancho55/main/IMG_7729.jpeg",
+                description: "Soft ambient gradients merging warmth and protection into a single flowing composition."
+            },
+            {
+                id: 7,
+                title: "Resurrection Prism",
+                era: "Present",
+                year: "2026",
+                image: "https://raw.githubusercontent.com/rancho55/rancho55/main/IMG_7716.jpeg",
+                description: "Light refraction breaking through heavy sepia darkness to signify triumph over death."
+            },
+            {
+                id: 8,
+                title: "Alpha and Omega Gestures",
+                era: "Past",
+                year: "2024",
+                image: "https://raw.githubusercontent.com/rancho55/rancho55/main/IMG_6728.jpeg",
+                description: "Calligraphic gestures rooted in ancient Byzantine icons translated into contemporary brushwork."
+            },
+            {
+                id: 9,
+                title: "Silence Before Pilate",
+                era: "Past & Present",
+                year: "2025",
+                image: "https://raw.githubusercontent.com/rancho55/rancho55/main/IMG_6725.jpeg",
+                description: "Profound stillness captured in monochromatic balance and stark horizontal division."
+            },
+            {
+                id: 10,
+                title: "Ascension in Ochre",
+                era: "Present",
+                year: "2026",
+                image: "https://raw.githubusercontent.com/rancho55/rancho55/main/IMG_7720.jpeg",
+                description: "Upward kinetic energy pulling the viewer's gaze toward infinite golden space."
+            }
+        ];
+
+        let currentIndex = 0;
+
+        // Render Gallery Grid
+        function renderGallery() {
+            const grid = document.getElementById('gallery-grid');
+            grid.innerHTML = artworks.map((art, index) => `
+                <div onclick="openGallery(${index})" class="gallery-item group cursor-pointer bg-cardBg rounded-2xl overflow-hidden border border-zinc-800/80 shadow-lg hover:border-accentGold/50 transition-all duration-300">
+                    <div class="relative aspect-[4/5] overflow-hidden bg-zinc-950">
+                        <img src="${art.image}" alt="${art.title}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
+                        <div class="absolute inset-0 bg-gradient-to-t from-darkBg/90 via-transparent to-transparent opacity-60 group-hover:opacity-85 transition-opacity"></div>
+                        <div class="absolute top-4 right-4 bg-darkBg/80 backdrop-blur-md px-3 py-1 rounded-full border border-zinc-700 text-[10px] uppercase font-mono text-accentGold">
+                            ${art.era}
+                        </div>
+                        <div class="absolute bottom-0 inset-x-0 p-6">
+                            <span class="text-xs font-mono text-accentGold mb-1 block">0${index + 1} / ${art.year}</span>
+                            <h3 class="serif-title text-xl text-zinc-100 group-hover:text-accentGold transition-colors">${art.title}</h3>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Render Lightbox Thumbnails
+        function renderLightboxThumbs() {
+            const container = document.getElementById('lightbox-thumbs');
+            container.innerHTML = artworks.map((art, index) => `
+                <button onclick="jumpToImage(${index})" class="relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${index === currentIndex ? 'border-accentGold scale-105 opacity-100' : 'border-transparent opacity-50 hover:opacity-80'}">
+                    <img src="${art.image}" alt="${art.title}" class="w-full h-full object-cover">
+                </button>
+            `).join('');
+        }
+
+        // Open Gallery Viewer
+        function openGallery(index) {
+            currentIndex = index;
+            updateLightboxContent();
+            renderLightboxThumbs();
+            const lightbox = document.getElementById('lightbox');
+            lightbox.classList.remove('hidden');
+            setTimeout(() => {
+                lightbox.classList.remove('opacity-0');
+            }, 10);
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Close Gallery Viewer
+        function closeGallery() {
+            const lightbox = document.getElementById('lightbox');
+            lightbox.classList.add('opacity-0');
+            setTimeout(() => {
+                lightbox.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+            }, 300);
+        }
+
+        // Update Lightbox Content
+        function updateLightboxContent() {
+            const art = artworks[currentIndex];
+            document.getElementById('lightbox-counter').innerText = `0${currentIndex + 1} / 10`;
+            document.getElementById('lightbox-title').innerText = art.title;
+            
+            const img = document.getElementById('lightbox-img');
+            img.style.opacity = '0';
+            setTimeout(() => {
+                img.src = art.image;
+                img.style.opacity = '1';
+            }, 150);
+
+            document.getElementById('lightbox-desc').innerText = art.description;
+            renderLightboxThumbs();
+        }
+
+        // Next / Previous Navigation
+        function nextImage() {
+            currentIndex = (currentIndex + 1) % artworks.length;
+            updateLightboxContent();
+        }
+
+        function prevImage() {
+            currentIndex = (currentIndex - 1 + artworks.length) % artworks.length;
+            updateLightboxContent();
+        }
+
+        function jumpToImage(index) {
+            currentIndex = index;
+            updateLightboxContent();
+        }
+
+        // Keyboard Navigation in Lightbox
+        document.addEventListener('keydown', (e) => {
+            const lightbox = document.getElementById('lightbox');
+            if (!lightbox.classList.contains('hidden')) {
+                if (e.key === 'ArrowRight') nextImage();
+                if (e.key === 'ArrowLeft') prevImage();
+                if (e.key === 'Escape') closeGallery();
+            }
+        });
+
+        // Form Submit Simulation
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const toast = document.getElementById('toast');
+            toast.classList.remove('translate-y-24', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-24', 'opacity-0');
+            }, 4000);
+            e.target.reset();
+        }
+
+        // Initialize on load
+        window.onload = function() {
+            renderGallery();
+        };
+    </script>
+</body>
+</html>
